@@ -132,7 +132,7 @@ Resolve and validate IPv4 and IPv6 destinations at each new connection, reject
 loopback/private/link-local/reserved destinations, and connect to the validated
 address to prevent a hostname changing to an internal address between checks.
 Refuse HTTP redirects so credentials cannot be forwarded to another destination.
-Restrict ports to deployment-approved RCON ports and limit connection attempts,
+Allow RCON ports from 1 to 65535 while retaining public-address restrictions. Limit connection attempts,
 response sizes, and parsing work. Local simulations use isolated test fixtures,
 not a public configuration switch disabling these rules.
 

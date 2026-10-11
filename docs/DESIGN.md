@@ -33,7 +33,8 @@ while the bot is offline.
 
 A signed-in user enters a connection name, one RCON address:port field, and a
 password. Accept IP:port, hostname:port, or [IPv6]:port. Store the parsed host
-and port separately and keep all destination and approved-port restrictions.
+and port separately. Accept any port from 1 to 65535 while retaining public
+destination restrictions.
 Validate the destination before contacting it. Authenticate to the fixed RCON
 identity route and discover the server UUID from its response, then check the
 player-list response before saving. No UUID or join code is entered by the user;
@@ -166,7 +167,7 @@ last 15 minutes and both a same-origin request and a valid form token.
 Login attempts are bound to the browser and expire after five minutes.
 
 One fresh read first requests /v1/server-id and then /v1/players. Public IPs are
-validated and pinned for the read. Only configured destination ports are allowed.
+validated and pinned for the read. All destination ports from 1 to 65535 are allowed.
 The total operation timeout is 10 seconds, concurrency is eight, and responses
 are capped at 256 KiB, 512 players, and 256 characters per name.
 

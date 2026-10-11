@@ -18,7 +18,6 @@ class Settings:
     client_id: str
     client_secret: str
     allowed_users: frozenset[str]
-    ports: frozenset[int] = frozenset({7776})
     bind_port: int = 8080
     timeout: int = 10
     support_url: str = ""
@@ -63,9 +62,6 @@ def load_settings(env_file=".env"):
     users = frozenset(x.strip() for x in get("ALLOWED_DISCORD_IDS").split(","))
     if users != {"*"} and not all(re.fullmatch(r"[0-9]{17,20}", x) for x in users):
         raise ValueError("ALLOWED_DISCORD_IDS must list Discord IDs or be *.")
-    ports = frozenset(int(x.strip()) for x in get("RCON_PORTS").split(","))
-    if not ports or any(p < 1024 or p > 65535 for p in ports):
-        raise ValueError("RCON_PORTS must contain approved ports between 1024 and 65535.")
     bind_port = int(os.environ.get("SEEDHUB_RCON_BIND_PORT", "8080"))
     if not 1024 <= bind_port <= 65535:
         raise ValueError("Invalid local listener port.")
@@ -74,4 +70,4 @@ def load_settings(env_file=".env"):
                     or urlsplit(support).username or urlsplit(support).password):
         raise ValueError("SUPPORT_URL must be an HTTPS link.")
     return Settings(origin, Path(get("DB_PATH")).expanduser(), key, client_id,
-                    get("DISCORD_CLIENT_SECRET"), users, ports, bind_port, 10, support)
+                    get("DISCORD_CLIENT_SECRET"), users, bind_port, 10, support)

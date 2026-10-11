@@ -152,3 +152,13 @@ field, IPv6 round trips, invalid input rejection before transport calls, and
 continued private-network blocking. Python compilation and whitespace checks
 passed. Tests used local fixtures; VPS rollout and real-server acceptance remain
 pending.
+
+## All valid RCON ports — 2026-10-11
+
+Removed the operator port allowlist at the owner's request. Registration, edits,
+tests and API reads accept destination ports 1–65535. Existing RCON_PORTS settings
+are ignored; no .env or database migration is needed. Public-address checks,
+fixed read-only routes, redirect refusal, authentication and rate limits remain.
+All 62 isolated tests passed, including low/high port acceptance, invalid-port
+rejection and configuration with missing or legacy allowlists. Python compilation
+and diff checks passed. No live game-server requests or VPS deployment performed.

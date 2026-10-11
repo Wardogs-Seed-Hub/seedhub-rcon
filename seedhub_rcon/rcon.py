@@ -138,8 +138,8 @@ class Rcon:
 
     async def _read(self, host, port, password, expected_uuid):
         host = host_name(host)
-        if type(port) is not int or port not in self.settings.ports:
-            raise Problem(400, "invalid_destination", "This RCON port is not approved by the operator.")
+        if type(port) is not int or not 1 <= port <= 65535:
+            raise Problem(400, "invalid_destination", "Enter a valid RCON port from 1 to 65535.")
         if not password or len(password) > 512 or any(ord(c) < 32 or ord(c) > 126 for c in password):
             raise Problem(400, "invalid_request", "Enter a valid RCON password.")
         try:

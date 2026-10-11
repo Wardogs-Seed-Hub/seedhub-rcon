@@ -50,7 +50,8 @@ Edit .env privately:
   values from your dedicated Discord OAuth application.
 - SEEDHUB_RCON_ALLOWED_DISCORD_IDS: comma-separated test account IDs.
   An explicit * opens sign-in to everyone; keep initial testing restricted.
-- SEEDHUB_RCON_RCON_PORTS: approved game-server RCON ports, default 7776.
+- RCON connections accept any port from 1 to 65535. The old
+  SEEDHUB_RCON_RCON_PORTS setting is ignored and may be removed from existing .env files.
 - SEEDHUB_RCON_SUPPORT_URL: optional HTTPS link to private support.
 
 Compose fixes the database path at /data/seedhub-rcon.sqlite3 inside the container.

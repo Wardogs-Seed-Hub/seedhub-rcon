@@ -44,8 +44,6 @@ class Service:
         if not 1 <= len(label) <= 80:
             raise Problem(400, "invalid_request", "Give the connection a name of 1 to 80 characters.")
         host, port = rcon_address(str(form.get("address", "")))
-        if port not in self.transport.settings.ports:
-            raise Problem(400, "invalid_destination", "This port is not approved by the operator.")
         return label, host, port
 
     def setup_limit(self, owner, host, port):
