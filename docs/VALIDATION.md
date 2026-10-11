@@ -162,3 +162,17 @@ fixed read-only routes, redirect refusal, authentication and rate limits remain.
 All 62 isolated tests passed, including low/high port acceptance, invalid-port
 rejection and configuration with missing or legacy allowlists. Python compilation
 and diff checks passed. No live game-server requests or VPS deployment performed.
+
+## Owner player-list preview — 2026-10-11
+
+Added View player list beside Test connection. It displays copyable, formatted
+JSON with the same fields and player data as the bot API. Owner access requires
+an active session and valid form protection, but no API key. API access still
+requires its server-specific key. Both paths share the cache, lock, rate limits
+and retry delays, and recheck permission/revision after waiting.
+
+All 68 isolated tests passed, including matching API/preview data, escaped player
+names, text Steam IDs, empty lists, no credentials in the response, unauthorized
+and disabled access, logout/deletion/edit during reads, shared concurrent reads,
+and failure backoff. Python compilation and diff checks passed. Real-server data,
+visual layout and browser clipboard behavior await owner testing on the VPS.

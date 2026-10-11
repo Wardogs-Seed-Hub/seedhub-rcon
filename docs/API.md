@@ -77,6 +77,7 @@ Owner routes use server-rendered forms and a session cookie, not the API key:
 - GET/POST /connections/new for verified registration.
 - GET /connections/<internal-id> for owner-only details.
 - GET/POST /connections/<internal-id>/edit for verified updates.
+- POST /connections/<internal-id>/players for an owner-only JSON preview.
 - POST /connections/<internal-id>/<action> for test, key, revoke, enable, disable, delete.
 
 All POSTs require the session's csrf form value and an Origin matching PUBLIC_URL.
@@ -84,6 +85,11 @@ Sessions last four hours; mutations require sign-in within 15 minutes.
 Mutations other than test/edit/add/logout require a confirmation form.
 A successful key creation returns the new key once in a no-store owner page.
 Passwords are never returned. A connection test returns a status, not a player list.
+The separate View player list button displays the successful API response as
+formatted, copyable JSON. It requires an active owner session and CSRF protection,
+but no API key or recent-sign-in confirmation. It shares the API's cache, lock,
+rate limits and retry delays, and refuses disabled connections. Permissions and
+session validity are rechecked after waits. The public API still requires a key.
 GET /healthz returns a minimal local service/database status and does not check RCON.
 
 ## Successful response

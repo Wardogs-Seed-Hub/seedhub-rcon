@@ -3,7 +3,7 @@ document.querySelectorAll("[data-copy]").forEach(button => button.addEventListen
   const input = document.getElementById(button.dataset.copy);
   const status = document.getElementById("copy-status");
   try { await navigator.clipboard.writeText(input.value); status.textContent = "Copied."; }
-  catch { input.select(); status.textContent = "Select and copy the key manually."; }
+  catch { input.select(); status.textContent = "Select and copy the text manually."; }
 }));
 document.querySelectorAll("form").forEach(form => form.addEventListener("submit", () => {
   const button = form.querySelector("[data-busy]");

@@ -10,6 +10,7 @@ SeedHUB RCON lets WARDOGS community-server owners connect their servers and prov
 - Store RCON passwords encrypted.
 - Create, replace, or revoke a read-only API key for each server.
 - Retrieve player lists on demand, with a 30-second cache. No background scanning.
+- View and copy the bot API response, including player names and Steam IDs, from each connection.
 
 ## Setup
 

@@ -144,9 +144,23 @@ class Service:
     async def read(self, raw, sid):
         initial = self.authorize(raw, sid)
         cid = initial["id"]
+        return await self._read(cid, lambda: self.authorize(raw, sid))
+
+    async def owner_read(self, owner, cid, guard):
+        def authorize():
+            guard()
+            row = self.db.owned(cid, owner)
+            if not row["enabled"]:
+                raise Problem(403, "access_denied", "This connection is disabled.")
+            return row
+        authorize()
+        return await self._read(cid, authorize)
+
+    async def _read(self, cid, authorize):
         self.db.limit("read:" + cid, 60, 60)
         async with self.lock(cid):
-            row = self.authorize(raw, sid)
+            row = authorize()
+            sid = row["server_uuid"]
             now = time.time()
             hit = self.cache.get(cid)
             if hit and hit[0] == row["revision"] and now - hit[1] < 30:
@@ -167,11 +181,11 @@ class Service:
                         self.db.conn.execute("""UPDATE connections SET failures=failures+1,next_read=?,
                             checked_at=?,check_status='Unavailable' WHERE id=?""",
                             (time.time() + delay, time.time(), cid))
-                self.authorize(raw, sid)
+                authorize()
                 if exc.code == "server_mismatch":
                     raise Problem(503, "rcon_unavailable", "The game server identity changed.", 60) from None
                 raise
-            current = self.authorize(raw, sid)
+            current = authorize()
             if current["revision"] != row["revision"]:
                 raise Problem(503, "service_unavailable", "The connection changed during the check.", 30)
             observed = time.time()

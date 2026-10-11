@@ -1,5 +1,6 @@
 """HTTP application. Construct explicitly; never connect to RCON on startup."""
 import ipaddress
+import json
 import logging
 from pathlib import Path
 import secrets
@@ -236,6 +237,15 @@ async def action(request):
     return web.HTTPSeeOther("/" if operation == "delete" else "/connections/" + cid)
 
 
+async def player_list(request):
+    found, _ = await form(request, fresh=False)
+    state = request.app[STATE]
+    cid = request.match_info["cid"]
+    result = await state.service.owner_read(found["owner"], cid, lambda: session(request))
+    row = state.db.owned(cid, found["owner"])
+    return render(request, "players", row=row, player_json=json.dumps(result, indent=2))
+
+
 async def api(request):
     auth = request.headers.get("Authorization", "")
     raw = auth[7:] if auth.startswith("Bearer ") else ""
@@ -272,6 +282,7 @@ def create_app(settings, db, transport=None, oauth=None):
         web.get("/connections/new", new_page), web.post("/connections/new", save),
         web.get("/connections/{cid}", details), web.get("/connections/{cid}/edit", edit_page),
         web.post("/connections/{cid}/edit", save),
+        web.post("/connections/{cid}/players", player_list),
         web.post("/connections/{cid}/{action}", action),
         web.get("/api/{uuid}/playerlist", api, allow_head=False),
         web.get("/static/{name}", static)])
