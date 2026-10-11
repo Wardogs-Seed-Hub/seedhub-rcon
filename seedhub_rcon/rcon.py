@@ -37,6 +37,26 @@ def host_name(value):
         return ascii_host
 
 
+def rcon_address(value):
+    value = value.strip()
+    match = re.fullmatch(r"(?:\[([^\[\]]+)\]|([^:\[\]]+)):([0-9]{1,5})", value)
+    if not match:
+        raise Problem(400, "invalid_destination", "Enter the RCON address as IP:port or hostname:port.")
+    bracketed, hostname, port_text = match.groups()
+    if bracketed:
+        try:
+            host = str(ipaddress.IPv6Address(bracketed))
+        except ValueError:
+            raise Problem(400, "invalid_destination", "Enter IPv6 addresses as [IPv6]:port.") from None
+    else:
+        host = hostname
+    host = host_name(host)
+    port = int(port_text)
+    if not 1 <= port <= 65535:
+        raise Problem(400, "invalid_request", "Enter a valid RCON port from 1 to 65535.")
+    return host, port
+
+
 def public_ip(value):
     ip = ipaddress.ip_address(value)
     if (not ip.is_global or ip.is_multicast or ip.is_reserved

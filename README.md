@@ -5,7 +5,7 @@ SeedHUB RCON lets WARDOGS community-server owners connect their servers and prov
 ## Features
 
 - Sign in with Discord.
-- Add, test, edit, enable, or remove your server connections.
+- Add, test, edit, enable, or remove your server connections using one address:port field.
 - Automatically read each server's UUID through RCON before registration.
 - Store RCON passwords encrypted.
 - Create, replace, or revoke a read-only API key for each server.

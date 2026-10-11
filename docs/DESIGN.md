@@ -31,7 +31,9 @@ while the bot is offline.
 
 ## Registration and duplicate handling
 
-A signed-in user enters a connection name, RCON host, port, and password.
+A signed-in user enters a connection name, one RCON address:port field, and a
+password. Accept IP:port, hostname:port, or [IPv6]:port. Store the parsed host
+and port separately and keep all destination and approved-port restrictions.
 Validate the destination before contacting it. Authenticate to the fixed RCON
 identity route and discover the server UUID from its response, then check the
 player-list response before saving. No UUID or join code is entered by the user;

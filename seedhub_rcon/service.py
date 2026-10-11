@@ -7,7 +7,7 @@ import uuid
 import weakref
 
 from .errors import Problem
-from .rcon import host_name
+from .rcon import rcon_address
 from .security import context, digest, equal, token
 
 
@@ -43,11 +43,7 @@ class Service:
         label = str(form.get("label", "")).strip()
         if not 1 <= len(label) <= 80:
             raise Problem(400, "invalid_request", "Give the connection a name of 1 to 80 characters.")
-        host = host_name(str(form.get("host", "")))
-        try:
-            port = int(str(form.get("port", "")))
-        except ValueError:
-            raise Problem(400, "invalid_request", "Enter a valid RCON port.") from None
+        host, port = rcon_address(str(form.get("address", "")))
         if port not in self.transport.settings.ports:
             raise Problem(400, "invalid_destination", "This port is not approved by the operator.")
         return label, host, port

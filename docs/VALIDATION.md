@@ -142,3 +142,13 @@ failed authentication/identity/player responses leaving no registration. Existin
 connections cannot be edited to a different identity. Python compilation and
 diff whitespace checks passed. Tests use disposable data and simulated game
 servers; owner testing against a real WARDOGS server remains pending.
+
+## Combined RCON address field — 2026-10-11
+
+Add and Edit use one address:port field. IPv4, hostnames and bracketed IPv6 are
+parsed into the existing stored host and port fields; no data migration is needed.
+All 59 isolated tests passed, including registration and editing with the combined
+field, IPv6 round trips, invalid input rejection before transport calls, and
+continued private-network blocking. Python compilation and whitespace checks
+passed. Tests used local fixtures; VPS rollout and real-server acceptance remain
+pending.

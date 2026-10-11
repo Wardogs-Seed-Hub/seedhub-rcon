@@ -197,7 +197,7 @@ async def logout(request):
 
 async def new_page(request):
     session(request)
-    return render(request, "form", row=None, ports=sorted(request.app[STATE].settings.ports))
+    return render(request, "form", row=None)
 
 
 async def save(request):
@@ -217,7 +217,7 @@ async def details(request):
 async def edit_page(request):
     found = session(request)
     row = request.app[STATE].db.owned(request.match_info["cid"], found["owner"])
-    return render(request, "form", row=row, ports=sorted(request.app[STATE].settings.ports))
+    return render(request, "form", row=row)
 
 
 async def action(request):
