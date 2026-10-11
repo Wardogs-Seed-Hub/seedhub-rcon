@@ -99,6 +99,13 @@ Only the bot knows whether seeding is active. The service does not claim that a
 valid key proves active seeding. It handles authorized on-demand reads without
 background scans or bot-state synchronization.
 
+Native browser forms require the exact configured Origin and a session-bound
+CSRF token. Normal pages use Referrer-Policy: same-origin so native form posts
+retain their Origin while outbound navigation sends no referrer. OAuth callback
+responses retain no-referrer to protect callback parameters. Cookie expiration
+preserves the Secure and Path=/ requirements of __Host- cookies; logout also
+deletes the server-side session.
+
 ## Duplicate registration
 
 Enforce uniqueness on normalized, verified server UUIDs within the instance.
@@ -169,6 +176,8 @@ For restricted testing, set SUPPORT_URL to your private support destination and
 keep ALLOWED_DISCORD_IDS restricted to the participating test accounts.
 
 ## References
+
+- [Browser form Origin and referrer policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Referrer-Policy#effect_on_the_origin_header)
 
 - [Discord OAuth2](https://docs.discord.com/developers/topics/oauth2)
 - [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/)

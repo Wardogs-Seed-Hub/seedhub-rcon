@@ -109,3 +109,25 @@ accent is orange, the port is a text field and the address placeholder is absent
 The form and landing page had no horizontal overflow at the checked mobile width;
 the desktop form also fit. Screenshot capture timed out, so final visual review
 remains an owner check. This UI update still requires a VPS pull and rebuild.
+
+## Browser sign-out fix
+
+Reproduced the owner's sign-out error by clicking the real form in the local
+browser with a disposable session. The global no-referrer policy caused the
+native form's Origin to be null, which the existing exact-origin check rejected.
+Synthetic HTTP tests had supplied Origin explicitly and missed this browser behavior.
+
+Normal pages now use same-origin referrer policy; OAuth callback responses keep
+no-referrer. Origin and CSRF validation remain strict. Cookie expiry now uses
+the same Secure, HttpOnly, SameSite=Lax, Path=/ attributes as cookie creation,
+including for OAuth browser-binding cleanup.
+
+52 isolated tests passed (5.713 seconds) on Windows/Python 3.14.2. Coverage includes
+session invalidation without affecting another session, correct cookie-expiry
+attributes, rejection of missing/null/foreign Origin and wrong CSRF tokens,
+and OAuth success/failure privacy and cleanup.
+
+The local browser reproduced the error before the change. After the change,
+clicking Sign out returned to the logged-out landing page, and server setup
+required signing in again. The preview uses only disposable simulated identity
+and data. VPS pull/rebuild and an owner sign-out check remain pending.

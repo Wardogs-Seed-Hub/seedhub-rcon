@@ -64,6 +64,11 @@ def cookie(response, name, value, age):
                         samesite="Lax", path="/")
 
 
+def clear_cookie(response, name):
+    # Expiring a __Host- cookie must preserve Secure, Path=/ and no Domain.
+    cookie(response, name, "", 0)
+
+
 @web.middleware
 async def boundary(request, handler):
     state = request.app[STATE]
@@ -91,7 +96,7 @@ async def boundary(request, handler):
         if request.path == "/auth/discord/callback":
             # Keep OAuth codes/state off rendered pages and subsequent referrers.
             response = web.HTTPSeeOther("/login-failed")
-            response.del_cookie(OAUTH_COOKIE, path="/")
+            clear_cookie(response, OAUTH_COOKIE)
         elif request.path.startswith("/api/"):
             response = web.json_response({"error": {"code": exc.code, "message": exc.message}}, status=exc.status)
         else:
@@ -108,9 +113,12 @@ async def boundary(request, handler):
                 "message": "The service is temporarily unavailable."}}, status=503)
         else:
             response = web.Response(text="Temporarily unavailable. Please try again.", status=503)
+    # no-referrer makes native form POSTs send Origin: null. Preserve same-origin
+    # forms while keeping OAuth callback parameters out of redirect referrers.
+    referrer_policy = "no-referrer" if request.path == "/auth/discord/callback" else "same-origin"
     response.headers.update({
         "Cache-Control": "no-store", "Pragma": "no-cache",
-        "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": referrer_policy, "X-Content-Type-Options": "nosniff",
         "X-Frame-Options": "DENY", "Strict-Transport-Security": "max-age=31536000",
         "Content-Security-Policy": "default-src 'none'; style-src 'self'; script-src 'self'; "
             "img-src 'self'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
@@ -174,7 +182,7 @@ async def callback(request):
         state.db.audit(owner, "login")
     response = web.HTTPSeeOther("/")
     cookie(response, COOKIE, state.db.new_session(owner), 4*3600)
-    response.del_cookie(OAUTH_COOKIE, path="/")
+    clear_cookie(response, OAUTH_COOKIE)
     return response
 
 
@@ -183,7 +191,7 @@ async def logout(request):
     with request.app[STATE].db.conn:
         request.app[STATE].db.conn.execute("DELETE FROM sessions WHERE hash=?", (found["hash"],))
     response = web.HTTPSeeOther("/")
-    response.del_cookie(COOKIE, path="/")
+    clear_cookie(response, COOKIE)
     return response
 
 
