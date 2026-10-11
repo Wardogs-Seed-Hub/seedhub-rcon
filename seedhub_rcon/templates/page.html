@@ -10,18 +10,12 @@
 {% if page == "landing" %}
 <div class="eyebrow">WARDOGS · CONNECTION MANAGER</div>
 <section class="hero"><div><h1>Your servers.<br><span class="accent">Ready when needed.</span></h1>
-<p class="lead">Connect your WARDOGS servers once. SeedHub reads a player list only when asked. Everything else stays idle.</p>
-<a class="button primary" href="/auth/discord">Continue with Discord <span>↗</span></a><p class="small muted">We only request your Discord identity.</p></div>
-<div class="hero-card"><div class="card-top"><span class="eyebrow">HOW IT WORKS</span><span class="pill">On demand</span></div>
-<ol class="steps"><li><strong>Connect a server</strong><span>Add its RCON details and verify the join code.</span></li>
-<li><strong>Create a private read key</strong><span>Allow a trusted client to request that server’s player list.</span></li>
-<li><strong>Leave the rest idle</strong><span>No background scans. No server-management commands.</span></li></ol></div></section>
-<div class="features"><article><span class="feature-number">01</span><h3>Encrypted storage</h3><p>Saved RCON passwords are encrypted and never shown again.</p></article>
-<article><span class="feature-number">02</span><h3>Your connections</h3><p>Manage the servers registered to your Discord account.</p></article>
-<article><span class="feature-number">03</span><h3>Read-only access</h3><p>Each API key reads one server. It cannot kick players or change settings.</p></article></div>
+<p class="lead">Connect your WARDOGS servers once. SeedHub reads a player list only when asked.</p>
+<a class="button primary" href="/auth/discord">Continue with Discord <span>↗</span></a></div>
+</section>
 {% elif page == "dashboard" %}
-<div class="eyebrow">YOUR WORKSPACE</div><div class="heading"><div><h1>Server connections</h1><p class="muted">Saved here. Checked only when requested.</p></div><a class="button primary" href="/connections/new">+ Add server</a></div>
-<div class="summary"><span><strong>{{ rows|length }}</strong> registered</span><span><i class="dot"></i> No background scans</span><span>Private to your Discord account</span></div>
+<div class="eyebrow">YOUR WORKSPACE</div><div class="heading"><div><h1>Server connections</h1></div><a class="button primary" href="/connections/new">+ Add server</a></div>
+<div class="summary"><span><strong>{{ rows|length }}</strong> registered</span></div>
 {% if rows %}<div class="grid">{% for row in rows %}<article class="server-card"><div class="card-top"><span class="eyebrow">WARDOGS SERVER</span><span class="pill {{ 'paused' if not row.enabled else '' }}">{{ 'Enabled' if row.enabled else 'Disabled' }}</span></div>
 <h2><a href="/connections/{{ row.id }}">{{ row.label }}</a></h2><p class="mono muted">{{ row.server_uuid }}</p>
 <div class="card-bottom"><span>{{ row.check_status or 'Not tested' }}<small>{{ stamp(row.checked_at) if row.checked_at else 'No check recorded' }}</small></span><a class="arrow" aria-label="Manage {{ row.label }}" href="/connections/{{ row.id }}">↗</a></div></article>{% endfor %}</div>
@@ -58,4 +52,4 @@
 {% elif page == "error" %}
 <div class="eyebrow">REQUEST NOT COMPLETED</div><h1>Let’s try that again</h1><section class="panel narrow"><p role="alert">{{ message }}</p><div class="actions"><a class="button primary" href="/">Back to connections</a><a class="button quiet" href="/auth/discord">Sign in again</a></div>{% if support %}<p><a href="{{ support }}" rel="noreferrer">Contact support ↗</a></p>{% endif %}</section>
 {% endif %}
-</main><footer><span>SeedHub RCON <span class="muted">/</span> On-demand server access</span>{% if support %}<a href="{{ support }}" rel="noreferrer">Support</a>{% endif %}</footer></div></body></html>
+</main><footer><span>SeedHub RCON</span>{% if support %}<a href="{{ support }}" rel="noreferrer">Support</a>{% endif %}</footer></div></body></html>
