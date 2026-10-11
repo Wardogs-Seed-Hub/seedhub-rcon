@@ -1,0 +1,61 @@
+name: seedhub-rcon
+services:
+  rcon:
+    build:
+      context: .
+    image: seedhub-rcon:local
+    pull_policy: never
+    # Ubuntu/Linux: preserves the application's loopback-only listener.
+    # The existing host Tunnel connects to 127.0.0.1; no public port mapping.
+    network_mode: host
+    user: "${RCON_UID:?Set RCON_UID in .env}:${RCON_GID:?Set RCON_GID in .env}"
+    env_file:
+      - .env
+    environment:
+      SEEDHUB_RCON_DB_PATH: /data/seedhub-rcon.sqlite3
+    volumes:
+      - type: bind
+        source: ./data
+        target: /data
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${RCON_KEY_DIR:?Set the absolute RCON_KEY_DIR in .env}
+        target: /run/seedhub-rcon
+        read_only: true
+        bind:
+          create_host_path: false
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777,noexec,nosuid,nodev
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 30s
+    mem_limit: 384m
+    pids_limit: 64
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import os,urllib.request,urllib.parse;
+          port=os.environ.get('SEEDHUB_RCON_BIND_PORT','8080');
+          host=urllib.parse.urlsplit(os.environ['SEEDHUB_RCON_PUBLIC_URL']).netloc;
+          req=urllib.request.Request('http://127.0.0.1:'+port+'/healthz',headers={'Host':host});
+          opener=urllib.request.build_opener(urllib.request.ProxyHandler({}));
+          response=opener.open(req,timeout=3);
+          assert response.status==200
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3

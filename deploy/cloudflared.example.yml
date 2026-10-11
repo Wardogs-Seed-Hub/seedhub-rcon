@@ -1,0 +1,10 @@
+# Example for a locally managed Tunnel. Replace these placeholders.
+# Keep the live file and tunnel credentials outside the checkout.
+tunnel: REPLACE_WITH_TUNNEL_UUID
+credentials-file: /home/REPLACE_WITH_USER/.cloudflared/REPLACE_WITH_TUNNEL_UUID.json
+ingress:
+  - hostname: rcon.wardogseedhub.com
+    service: http://127.0.0.1:8080
+    originRequest:
+      httpHostHeader: rcon.wardogseedhub.com
+  - service: http_status:404

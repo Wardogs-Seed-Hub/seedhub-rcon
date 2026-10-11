@@ -1,0 +1,23 @@
+# Deny everything, then allow only runtime inputs. Secrets never enter the build context.
+**
+!Dockerfile
+!requirements.txt
+!seedhub_rcon/
+seedhub_rcon/**
+!seedhub_rcon/static/
+seedhub_rcon/static/**
+!seedhub_rcon/templates/
+seedhub_rcon/templates/**
+!seedhub_rcon/__init__.py
+!seedhub_rcon/__main__.py
+!seedhub_rcon/app.py
+!seedhub_rcon/config.py
+!seedhub_rcon/database.py
+!seedhub_rcon/errors.py
+!seedhub_rcon/oauth.py
+!seedhub_rcon/rcon.py
+!seedhub_rcon/security.py
+!seedhub_rcon/service.py
+!seedhub_rcon/static/app.js
+!seedhub_rcon/static/style.css
+!seedhub_rcon/templates/page.html

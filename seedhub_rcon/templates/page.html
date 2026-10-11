@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SeedHub RCON · Your server connections</title><link rel="stylesheet" href="/static/style.css">
+<script src="/static/app.js" defer></script></head>
+<body><div class="shell"><header><a class="brand" href="/"><span class="mark">S</span> SeedHub <span class="brand-sub">RCON</span></a>
+<nav>{% if session %}<span class="muted">Signed in with Discord</span><form method="post" action="/logout">
+<input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="quiet">Sign out</button></form>
+{% else %}<a class="quiet" href="/auth/discord">Sign in with Discord ↗</a>{% endif %}</nav></header>
+<main>
+{% if page == "landing" %}
+<div class="eyebrow">WARDOGS · CONNECTION MANAGER</div>
+<section class="hero"><div><h1>Your servers.<br><span class="accent">Ready when needed.</span></h1>
+<p class="lead">Connect your WARDOGS servers once. SeedHub reads a player list only when asked. Everything else stays idle.</p>
+<a class="button primary" href="/auth/discord">Continue with Discord <span>↗</span></a><p class="small muted">We only request your Discord identity.</p></div>
+<div class="hero-card"><div class="card-top"><span class="eyebrow">HOW IT WORKS</span><span class="pill">On demand</span></div>
+<ol class="steps"><li><strong>Connect a server</strong><span>Add its RCON details and verify the join code.</span></li>
+<li><strong>Create a private read key</strong><span>Allow a trusted client to request that server’s player list.</span></li>
+<li><strong>Leave the rest idle</strong><span>No background scans. No server-management commands.</span></li></ol></div></section>
+<div class="features"><article><span class="feature-number">01</span><h3>Encrypted storage</h3><p>Saved RCON passwords are encrypted and never shown again.</p></article>
+<article><span class="feature-number">02</span><h3>Your connections</h3><p>Manage the servers registered to your Discord account.</p></article>
+<article><span class="feature-number">03</span><h3>Read-only access</h3><p>Each API key reads one server. It cannot kick players or change settings.</p></article></div>
+<aside class="notice"><strong>About the game-server connection</strong><p>WARDOGS RCON currently uses unencrypted HTTP. This website uses HTTPS, and saved passwords are encrypted, but the connection to the game server is not encrypted.</p></aside>
+{% elif page == "dashboard" %}
+<div class="eyebrow">YOUR WORKSPACE</div><div class="heading"><div><h1>Server connections</h1><p class="muted">Saved here. Checked only when requested.</p></div><a class="button primary" href="/connections/new">+ Add server</a></div>
+<div class="summary"><span><strong>{{ rows|length }}</strong> registered</span><span><i class="dot"></i> No background scans</span><span>Private to your Discord account</span></div>
+{% if rows %}<div class="grid">{% for row in rows %}<article class="server-card"><div class="card-top"><span class="eyebrow">WARDOGS SERVER</span><span class="pill {{ 'paused' if not row.enabled else '' }}">{{ 'Enabled' if row.enabled else 'Disabled' }}</span></div>
+<h2><a href="/connections/{{ row.id }}">{{ row.label }}</a></h2><p class="mono muted">{{ row.server_uuid }}</p>
+<div class="card-bottom"><span>{{ row.check_status or 'Not tested' }}<small>{{ stamp(row.checked_at) if row.checked_at else 'No check recorded' }}</small></span><a class="arrow" aria-label="Manage {{ row.label }}" href="/connections/{{ row.id }}">↗</a></div></article>{% endfor %}</div>
+{% else %}<section class="empty"><div class="empty-icon">+</div><h2>Your first connection starts here</h2><p>Add a server’s RCON details. We’ll verify its identity before saving it.</p><a class="button" href="/connections/new">Add your first server</a></section>{% endif %}
+{% elif page == "form" %}
+<a class="back" href="{{ '/connections/' ~ row.id if row else '/' }}">← Back</a>
+<div class="eyebrow">SERVER SETUP</div><h1>{{ 'Edit connection' if row else 'Add a server' }}</h1><p class="muted">We’ll verify the server and test its player list before saving.</p>
+<form class="panel connection-form" method="post" action="{{ '/connections/' ~ row.id ~ '/edit' if row else '/connections/new' }}">
+<input type="hidden" name="csrf" value="{{ session.csrf }}">
+<label>Connection name<input name="label" maxlength="80" required value="{{ row.label if row else '' }}" placeholder="My community server"></label>
+{% if row %}<label>Verified join code<input readonly value="{{ row.server_uuid }}"></label>
+{% else %}<label>Server UUID / join code<input name="server_uuid" required maxlength="36" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"></label>{% endif %}
+<div class="form-row"><label>RCON address<input name="host" maxlength="253" required value="{{ row.host if row else '' }}" placeholder="Public hostname or IP"><small>No http:// prefix or path.</small></label>
+<label>RCON port<select name="port">{% for port in ports %}<option value="{{ port }}" {{ 'selected' if row and row.port == port else '' }}>{{ port }}</option>{% endfor %}</select></label></div>
+<label>RCON password<input type="password" name="password" maxlength="512" autocomplete="new-password" {{ 'required' if not row else '' }} placeholder="{{ 'Leave blank to keep the saved password' if row else 'Enter your RCON password' }}"><small>Encrypted when saved. Never displayed again.</small></label>
+<div class="notice"><strong>The game connection uses HTTP</strong><p>The RCON password travels unencrypted between this service and the game server. This is a current WARDOGS limitation.</p>
+<label class="check"><input type="checkbox" name="acknowledge" value="yes" required><span>I understand and have permission to connect this server.</span></label></div>
+<button class="primary" data-busy="Checking connection…">Verify and save connection</button></form>
+{% elif page == "detail" %}
+<a class="back" href="/">← All connections</a><div class="eyebrow">SERVER CONNECTION</div><div class="heading"><div><h1>{{ row.label }}</h1><p class="mono muted">{{ row.server_uuid }}</p></div><span class="pill {{ 'paused' if not row.enabled else '' }}">{{ 'Enabled' if row.enabled else 'Disabled' }}</span></div>
+<div class="detail-grid"><section class="panel"><h2>Connection details</h2><dl><dt>RCON address</dt><dd>{{ row.host }}:{{ row.port }}</dd><dt>Password</dt><dd>Encrypted · hidden</dd><dt>Last check</dt><dd>{{ row.check_status or 'Not checked' }}<small>{{ stamp(row.checked_at) if row.checked_at else '' }}</small></dd><dt>Read-only API key</dt><dd>{{ 'Created' if row.key_hash else 'Not created / revoked' }}</dd></dl>
+<div class="actions"><form method="post" action="/connections/{{ row.id }}/test"><input type="hidden" name="csrf" value="{{ session.csrf }}"><button data-busy="Checking…">Test connection</button></form><a class="button quiet" href="/connections/{{ row.id }}/edit">Edit details</a></div>
+<p class="small muted">Status shows the last check, not a live monitor.</p></section>
+<section class="panel"><h2>Private player-list access</h2><p>Create a key for a trusted client. The key can only read this server’s player list.</p><label>API address<input readonly value="{{ origin }}/api/{{ row.server_uuid }}/playerlist"></label>
+<div class="actions">{% for action, label in [('key','Create / replace key'),('revoke','Revoke key')] %}<form method="post" action="/connections/{{ row.id }}/{{ action }}"><input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="{{ 'primary' if action == 'key' else 'quiet' }}">{{ label }}</button></form>{% endfor %}</div></section></div>
+<div class="danger-zone"><div><h3>Connection controls</h3><p class="muted small">Disabling stops API reads. Deleting removes this connection and its key.</p></div><div class="actions">{% for action, label in [('disable' if row.enabled else 'enable','Disable' if row.enabled else 'Enable'),('delete','Delete connection')] %}<form method="post" action="/connections/{{ row.id }}/{{ action }}"><input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="{{ 'danger' if action == 'delete' else 'quiet' }}">{{ label }}</button></form>{% endfor %}</div></div>
+{% elif page == "key" %}
+<a class="back" href="/connections/{{ row.id }}">← Back to connection</a><div class="eyebrow">PRIVATE ACCESS</div><h1>Save this key now</h1>
+<section class="panel narrow"><p>This key reads <strong>{{ row.label }}</strong>. It will not be shown again. Any previous key has stopped working.</p>
+<label>Read-only API key<input id="api-key" readonly value="{{ api_key }}" autocomplete="off" spellcheck="false"></label><button type="button" data-copy="api-key">Copy key</button><span id="copy-status" role="status"></span>
+<p class="small muted">Keep it in your client’s secret settings. Never post it in a public Discord message or put it in a URL.</p><a class="button primary" href="/connections/{{ row.id }}">I’ve saved my key</a></section>
+{% elif page == "confirm" %}
+<a class="back" href="/connections/{{ row.id }}">← Back</a><h1>Confirm {{ operation }}</h1><section class="panel narrow"><p>Apply this action to <strong>{{ row.label }}</strong>?</p>
+<p class="muted">Replacing or revoking a key stops the old key immediately. Deleting cannot be undone.</p>
+<form method="post" action="/connections/{{ row.id }}/{{ operation }}"><input type="hidden" name="csrf" value="{{ session.csrf }}"><input type="hidden" name="confirm" value="yes"><button class="{{ 'danger' if operation == 'delete' else 'primary' }}">Confirm {{ operation }}</button></form></section>
+{% elif page == "error" %}
+<div class="eyebrow">REQUEST NOT COMPLETED</div><h1>Let’s try that again</h1><section class="panel narrow"><p role="alert">{{ message }}</p><div class="actions"><a class="button primary" href="/">Back to connections</a><a class="button quiet" href="/auth/discord">Sign in again</a></div>{% if support %}<p><a href="{{ support }}" rel="noreferrer">Contact support ↗</a></p>{% endif %}</section>
+{% endif %}
+</main><footer><span>SeedHub RCON <span class="muted">/</span> On-demand server access</span><span>{% if support %}<a href="{{ support }}" rel="noreferrer">Support</a> · {% endif %}<a href="https://github.com/Wardogs-Seed-Hub/seedhub-rcon" rel="noreferrer">Open source ↗</a></span></footer></div></body></html>
