@@ -9,7 +9,8 @@ See docs/VALIDATION.md for tested behavior and remaining live acceptance.
 WARDOGS RCON uses plain HTTP in the supported hosting scenario. Requests expose
 the RCON credential and responses to an observer on that network path; responses
 may also be altered in transit. Saved-password encryption and a Cloudflare Tunnel
-cannot repair that game-server connection. Disclose this during credential setup.
+cannot repair that game-server connection. The limitation is documented here;
+the website does not display transport warnings or require an acknowledgment.
 Do not label the system end-to-end encrypted.
 
 Treat each RCON credential as an admin credential, without assuming it has

@@ -21,3 +21,4 @@ seedhub_rcon/templates/**
 !seedhub_rcon/static/app.js
 !seedhub_rcon/static/style.css
 !seedhub_rcon/templates/page.html
+!seedhub_rcon/static/seedhub-logo.jpg

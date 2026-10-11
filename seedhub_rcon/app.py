@@ -195,8 +195,6 @@ async def new_page(request):
 async def save(request):
     found, data = await form(request)
     cid = request.match_info.get("cid")
-    if data.get("acknowledge") != "yes":
-        raise Problem(400, "consent_required", "Please acknowledge the game-server connection notice.")
     cid = await request.app[STATE].service.save(found["owner"], data,
         lambda: session(request, fresh=True), cid)
     return web.HTTPSeeOther("/connections/" + cid)
@@ -248,10 +246,12 @@ async def login_failed(request):
 
 async def static(request):
     name = request.match_info["name"]
-    if name not in ("style.css", "app.js"):
+    types = {"style.css": "text/css", "app.js": "application/javascript",
+             "seedhub-logo.jpg": "image/jpeg"}
+    if name not in types:
         raise web.HTTPNotFound()
     return web.Response(body=(Path(__file__).parent/"static"/name).read_bytes(),
-                        content_type="text/css" if name.endswith("css") else "application/javascript")
+                        content_type=types[name])
 
 
 def create_app(settings, db, transport=None, oauth=None):

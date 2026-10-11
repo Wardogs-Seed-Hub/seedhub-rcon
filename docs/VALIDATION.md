@@ -90,3 +90,22 @@ Use docs/DEPLOYMENT.md for the test setup and acceptance checklist:
 The existing Discord bot is unchanged. Automatic pairing and attendance-based
 rewards are separate work. No production credentials, live data, DNS, or hosted
 services were changed during this implementation.
+
+## Branding and form update
+
+After the owner confirmed VPS startup and successful Discord sign-in, the UI
+was updated to the supplied SeedHub logo and orange/black branding. Website
+HTTP notices, their acknowledgment requirement and the footer source link were
+removed. The RCON port is a numeric-keyboard text field; the address has no
+placeholder. The operator's approved-port checks remain enforced.
+
+51 isolated tests passed on Windows/Python 3.14.2 (6.168 seconds), including
+registration and editing without acknowledgment, invalid/unapproved port
+rejection before network access, and safe logo delivery. The Docker build context
+includes the supplied logo; its bytes match the original attachment.
+
+Local browser checks confirmed the logo loads, the background is black, the
+accent is orange, the port is a text field and the address placeholder is absent.
+The form and landing page had no horizontal overflow at the checked mobile width;
+the desktop form also fit. Screenshot capture timed out, so final visual review
+remains an owner check. This UI update still requires a VPS pull and rebuild.

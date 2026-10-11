@@ -12,6 +12,10 @@ the deployment checklist. This is not a production acceptance or security audit.
 
 ## What works
 
+The interface uses SeedHub's orange-and-black branding and existing logo.
+Server addresses have no placeholder text; RCON ports are typed directly and
+checked against the operator's approved ports.
+
 - Discord sign-in with the identify permission only.
 - Owner-only server registration, editing, testing, disabling, and removal.
 - Verification of the server UUID/join code before a registration is saved.
@@ -81,7 +85,6 @@ on the OAuth callback, which contains short-lived authorization codes.
 
 The game-side connection still uses unencrypted HTTP, an accepted WARDOGS
 limitation. Cloudflare Tunnel does not encrypt that final network connection.
-The website displays this notice before accepting credentials.
 
 Local simulations and tests are not shipped. Runtime code contains no test login,
 private-destination bypass, or production bot changes. Self-hosted observations

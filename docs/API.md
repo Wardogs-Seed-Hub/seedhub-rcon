@@ -1,7 +1,7 @@
 # Player list API contract
 
-This is the version 0.1.0 test-release contract. The implementation is local and
-has not yet been deployed. Bot pairing remains a separate integration task.
+This is the version 0.1.0 test-release contract. The owner has deployed the app
+for testing; live player-list acceptance remains pending. Bot pairing is separate.
 
 ## Route and identity
 

@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>SeedHub RCON · Your server connections</title><link rel="stylesheet" href="/static/style.css">
 <script src="/static/app.js" defer></script></head>
-<body><div class="shell"><header><a class="brand" href="/"><span class="mark">S</span> SeedHub <span class="brand-sub">RCON</span></a>
+<body><div class="shell"><header><a class="brand" href="/"><img class="brand-logo" src="/static/seedhub-logo.jpg" alt="SeedHub" width="180" height="50"> <span class="brand-sub">RCON</span></a>
 <nav>{% if session %}<span class="muted">Signed in with Discord</span><form method="post" action="/logout">
 <input type="hidden" name="csrf" value="{{ session.csrf }}"><button class="quiet">Sign out</button></form>
 {% else %}<a class="quiet" href="/auth/discord">Sign in with Discord ↗</a>{% endif %}</nav></header>
@@ -19,7 +19,6 @@
 <div class="features"><article><span class="feature-number">01</span><h3>Encrypted storage</h3><p>Saved RCON passwords are encrypted and never shown again.</p></article>
 <article><span class="feature-number">02</span><h3>Your connections</h3><p>Manage the servers registered to your Discord account.</p></article>
 <article><span class="feature-number">03</span><h3>Read-only access</h3><p>Each API key reads one server. It cannot kick players or change settings.</p></article></div>
-<aside class="notice"><strong>About the game-server connection</strong><p>WARDOGS RCON currently uses unencrypted HTTP. This website uses HTTPS, and saved passwords are encrypted, but the connection to the game server is not encrypted.</p></aside>
 {% elif page == "dashboard" %}
 <div class="eyebrow">YOUR WORKSPACE</div><div class="heading"><div><h1>Server connections</h1><p class="muted">Saved here. Checked only when requested.</p></div><a class="button primary" href="/connections/new">+ Add server</a></div>
 <div class="summary"><span><strong>{{ rows|length }}</strong> registered</span><span><i class="dot"></i> No background scans</span><span>Private to your Discord account</span></div>
@@ -35,11 +34,9 @@
 <label>Connection name<input name="label" maxlength="80" required value="{{ row.label if row else '' }}" placeholder="My community server"></label>
 {% if row %}<label>Verified join code<input readonly value="{{ row.server_uuid }}"></label>
 {% else %}<label>Server UUID / join code<input name="server_uuid" required maxlength="36" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"></label>{% endif %}
-<div class="form-row"><label>RCON address<input name="host" maxlength="253" required value="{{ row.host if row else '' }}" placeholder="Public hostname or IP"><small>No http:// prefix or path.</small></label>
-<label>RCON port<select name="port">{% for port in ports %}<option value="{{ port }}" {{ 'selected' if row and row.port == port else '' }}>{{ port }}</option>{% endfor %}</select></label></div>
+<div class="form-row"><label>RCON address<input name="host" maxlength="253" required value="{{ row.host if row else '' }}"></label>
+<label>RCON port<input type="text" name="port" inputmode="numeric" pattern="[0-9]{1,5}" maxlength="5" required value="{{ row.port if row else ports[0] }}"></label></div>
 <label>RCON password<input type="password" name="password" maxlength="512" autocomplete="new-password" {{ 'required' if not row else '' }} placeholder="{{ 'Leave blank to keep the saved password' if row else 'Enter your RCON password' }}"><small>Encrypted when saved. Never displayed again.</small></label>
-<div class="notice"><strong>The game connection uses HTTP</strong><p>The RCON password travels unencrypted between this service and the game server. This is a current WARDOGS limitation.</p>
-<label class="check"><input type="checkbox" name="acknowledge" value="yes" required><span>I understand and have permission to connect this server.</span></label></div>
 <button class="primary" data-busy="Checking connection…">Verify and save connection</button></form>
 {% elif page == "detail" %}
 <a class="back" href="/">← All connections</a><div class="eyebrow">SERVER CONNECTION</div><div class="heading"><div><h1>{{ row.label }}</h1><p class="mono muted">{{ row.server_uuid }}</p></div><span class="pill {{ 'paused' if not row.enabled else '' }}">{{ 'Enabled' if row.enabled else 'Disabled' }}</span></div>
@@ -61,4 +58,4 @@
 {% elif page == "error" %}
 <div class="eyebrow">REQUEST NOT COMPLETED</div><h1>Let’s try that again</h1><section class="panel narrow"><p role="alert">{{ message }}</p><div class="actions"><a class="button primary" href="/">Back to connections</a><a class="button quiet" href="/auth/discord">Sign in again</a></div>{% if support %}<p><a href="{{ support }}" rel="noreferrer">Contact support ↗</a></p>{% endif %}</section>
 {% endif %}
-</main><footer><span>SeedHub RCON <span class="muted">/</span> On-demand server access</span><span>{% if support %}<a href="{{ support }}" rel="noreferrer">Support</a> · {% endif %}<a href="https://github.com/Wardogs-Seed-Hub/seedhub-rcon" rel="noreferrer">Open source ↗</a></span></footer></div></body></html>
+</main><footer><span>SeedHub RCON <span class="muted">/</span> On-demand server access</span>{% if support %}<a href="{{ support }}" rel="noreferrer">Support</a>{% endif %}</footer></div></body></html>
