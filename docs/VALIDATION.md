@@ -131,3 +131,14 @@ The local browser reproduced the error before the change. After the change,
 clicking Sign out returned to the logged-out landing page, and server setup
 required signing in again. The preview uses only disposable simulated identity
 and data. VPS pull/rebuild and an owner sign-out check remain pending.
+
+## Automatic registration identity — 2026-10-11
+
+Registration now discovers the UUID from the authenticated RCON identity route,
+then validates the player list before saving. The form no longer accepts a join
+code. All 55 isolated tests passed, including real local HTTP fixtures for UUID
+discovery and normalization, ignored submitted UUIDs, duplicate refusal, and
+failed authentication/identity/player responses leaving no registration. Existing
+connections cannot be edited to a different identity. Python compilation and
+diff whitespace checks passed. Tests use disposable data and simulated game
+servers; owner testing against a real WARDOGS server remains pending.

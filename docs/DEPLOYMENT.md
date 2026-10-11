@@ -159,8 +159,10 @@ These checks remain pending until performed on the actual test deployment:
    local-only and the HTTPS domain routes through the Tunnel.
 2. Sign in with an allowed Discord account; verify another account is rejected.
    Confirm sign-out ends access.
-3. Register an authorized server. A wrong password or UUID must fail. Check the
-   saved password remains hidden and editing/testing work.
+3. Register an authorized server. The UUID is discovered automatically. A wrong
+   password or invalid server identity response must fail. Editing a connection
+   to point to a different server must fail. Check the saved password remains
+   hidden and editing/testing work.
 4. Try duplicate registration with the same account and another allowed account.
    Confirm warnings without revealing the original owner's details.
 5. Create a server read key. Send it privately in the Authorization header.

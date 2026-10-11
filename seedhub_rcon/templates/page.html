@@ -26,8 +26,6 @@
 <form class="panel connection-form" method="post" action="{{ '/connections/' ~ row.id ~ '/edit' if row else '/connections/new' }}">
 <input type="hidden" name="csrf" value="{{ session.csrf }}">
 <label>Connection name<input name="label" maxlength="80" required value="{{ row.label if row else '' }}" placeholder="My community server"></label>
-{% if row %}<label>Verified join code<input readonly value="{{ row.server_uuid }}"></label>
-{% else %}<label>Server UUID / join code<input name="server_uuid" required maxlength="36" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"></label>{% endif %}
 <div class="form-row"><label>RCON address<input name="host" maxlength="253" required value="{{ row.host if row else '' }}"></label>
 <label>RCON port<input type="text" name="port" inputmode="numeric" pattern="[0-9]{1,5}" maxlength="5" required value="{{ row.port if row else ports[0] }}"></label></div>
 <label>RCON password<input type="password" name="password" maxlength="512" autocomplete="new-password" {{ 'required' if not row else '' }} placeholder="{{ 'Leave blank to keep the saved password' if row else 'Enter your RCON password' }}"><small>Encrypted when saved. Never displayed again.</small></label>

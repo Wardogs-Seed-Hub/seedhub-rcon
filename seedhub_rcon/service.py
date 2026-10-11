@@ -7,7 +7,7 @@ import uuid
 import weakref
 
 from .errors import Problem
-from .rcon import host_name, server_uuid
+from .rcon import host_name
 from .security import context, digest, equal, token
 
 
@@ -59,12 +59,15 @@ class Service:
     async def save(self, owner, form, guard, cid=None):
         label, host, port = self.connection_input(form)
         old = self.db.owned(cid, owner) if cid else None
-        sid = old["server_uuid"] if old else server_uuid(form.get("server_uuid", ""))
         password = str(form.get("password", ""))
         if old and not password:
             password = self.db.password(old)
         self.setup_limit(owner, host, port)
-        await self.transport.read(host, port, password, sid)
+        if old:
+            sid = old["server_uuid"]
+            await self.transport.read(host, port, password, sid)
+        else:
+            sid = await self.transport.discover(host, port, password)
         guard()  # logout/session expiry during the network wait must cancel the write
         now = time.time()
         with self.db.conn:

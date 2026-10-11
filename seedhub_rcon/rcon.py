@@ -109,6 +109,14 @@ class Rcon:
                 raise Problem(502, "invalid_rcon_response", "The server response was invalid.") from None
 
     async def read(self, host, port, password, expected_uuid):
+        _, data = await self._read(host, port, password, expected_uuid)
+        return data
+
+    async def discover(self, host, port, password):
+        identity, _ = await self._read(host, port, password, None)
+        return identity
+
+    async def _read(self, host, port, password, expected_uuid):
         host = host_name(host)
         if type(port) is not int or port not in self.settings.ports:
             raise Problem(400, "invalid_destination", "This RCON port is not approved by the operator.")
@@ -132,9 +140,9 @@ class Rcon:
                             actual = server_uuid(identity["serverId"])
                         except Problem:
                             raise Problem(502, "invalid_rcon_response", "Server identity could not be verified.") from None
-                        if actual != expected_uuid:
+                        if expected_uuid is not None and actual != expected_uuid:
                             raise Problem(409, "server_mismatch", "The server does not match that UUID / join code.")
-                        return players(await self._get(session, ip, host, port, password, "/v1/players"))
+                        return actual, players(await self._get(session, ip, host, port, password, "/v1/players"))
         except TimeoutError:
             raise Problem(504, "rcon_timeout", "The game server took too long to respond.", 60) from None
         except (aiohttp.ClientError, OSError):

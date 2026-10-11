@@ -31,10 +31,12 @@ while the bot is offline.
 
 ## Registration and duplicate handling
 
-A signed-in user enters the RCON host, port, password, and expected server UUID
-or join code. Validate the destination before contacting it. Authenticate to the
-fixed RCON identity route and verify the returned UUID matches the expected
-identity. Never trust a typed UUID or display name alone.
+A signed-in user enters a connection name, RCON host, port, and password.
+Validate the destination before contacting it. Authenticate to the fixed RCON
+identity route and discover the server UUID from its response, then check the
+player-list response before saving. No UUID or join code is entered by the user;
+any client-supplied UUID is ignored during registration. Existing connections
+must still match their saved identity when edited or read.
 
 Only persist an enabled registration after successful identity verification.
 If that identity cannot be read, return a clear setup failure; do not reserve
