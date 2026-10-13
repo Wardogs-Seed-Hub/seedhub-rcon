@@ -142,7 +142,9 @@ Do not offer arbitrary command execution, kicks, bans, writes, or configuration 
 
 ## Data minimization and recovery
 
-Return only player Steam IDs and names, a count, and observation metadata.
+Return only player Steam IDs and names, a count, the verified server UUID, selected
+server name/map/experience/capacity fields, and their separate observation timestamps.
+Never forward raw status/configuration or fetch sponsor images.
 Do not collect player addresses or unrelated gameplay statistics.
 Keep player snapshots in bounded memory by default, not permanent history.
 Audit connection creation/removal, owner changes, authorization failures, and

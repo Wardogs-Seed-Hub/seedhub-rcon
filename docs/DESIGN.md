@@ -119,15 +119,18 @@ additional bot-state coupling and is not part of this simpler design.
 ## Reading player lists
 
 There is no independent service polling timer. The bot normally requests every
-60 seconds while seeding; the proposed minimum fresh-fetch spacing is 30 seconds.
+approximately 30 seconds while seeding; fresh-fetch spacing is at least 30 seconds
+after the previous successful player observation, subject to cache/backoff.
 No request means no RCON read, except explicit owner connection tests.
 
 For each read:
 1. Authenticate the key and verify permission for the enabled connection.
 2. Reuse a matching authorized snapshot at most 30 seconds old.
 3. Otherwise share one in-progress lookup for that connection.
-4. Fetch the fixed player-list route with bounded time and response size.
-5. Validate the response and preserve Steam IDs as strings.
+4. Verify the UUID, then fetch the fixed player-list route with bounded time and response size.
+5. Validate players and record their observation time, then fetch selected status
+   fields with the remaining timeout. Preserve Steam IDs as strings. Status has
+   its own observation time; failure returns null metadata and retains valid players.
 6. Recheck key validity, enabled state, and connection revision after the network
    wait before delivering the result.
 
@@ -166,7 +169,8 @@ Owner sessions last four hours. Mutating operations require sign-in within the
 last 15 minutes and both a same-origin request and a valid form token.
 Login attempts are bound to the browser and expire after five minutes.
 
-One fresh read first requests /v1/server-id and then /v1/players. Public IPs are
+One fresh API/preview read requests /v1/server-id, /v1/players and /v1/status in order.
+Registration/edit/test checks use only the first two routes. Public IPs are
 validated and pinned for the read. All destination ports from 1 to 65535 are allowed.
 The total operation timeout is 10 seconds, concurrency is eight, and responses
 are capped at 256 KiB, 512 players, and 256 characters per name.
@@ -176,6 +180,9 @@ are retained in memory. Rate-limit and next-read state persists in SQLite.
 Requests are limited globally and per caller, and setup/testing has separate
 owner, destination, and connection throttles. Failures delay later calls up to
 five minutes; no autonomous retry is scheduled.
+Optional status failure also preserves shared backoff and Retry-After, without
+extending the valid roster's cache lifetime or reusing older status as fresh.
+See API.md for the exact selected fields, validation and adapter handoff.
 
 Local automated checks and simulated browser inspection are recorded in
 VALIDATION.md. Real Discord login, game-server compatibility, Ubuntu service

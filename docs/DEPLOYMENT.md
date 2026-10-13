@@ -169,7 +169,10 @@ These checks remain pending until performed on the actual test deployment:
 5. Create a server read key. Send it privately in the Authorization header.
    Confirm a wrong key or key for another server fails.
 6. Check populated, empty and unavailable servers. Verify timestamps on cached
-   lists. Each fresh lookup reads identity and players; cached reads contact neither.
+   lists. Each fresh API/preview lookup reads identity, players and status; cached
+   reads contact none. Confirm server name, map, experiences and capacity match
+   the game. Verify separate player/status timestamps, server: null on optional
+   status failure, and Retry-After behavior while polling around every 30 seconds.
 7. Revoke/replace a key, disable and delete a disposable registration. Confirm old
    access fails, including after restart.
 8. Leave the app idle and confirm it makes no unsolicited game-server requests.

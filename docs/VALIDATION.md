@@ -1,5 +1,42 @@
 # Version 0.1.0 validation
 
+## RCON server-information extension — 2026-10-13
+
+Added selected server name, map, experience identifiers and capacity to the existing
+authenticated player-list response. Identity, players and status come from fixed
+game RCON routes; no external server-list website or sponsor image is fetched.
+Player and status observations have separate timestamps. Optional status failure
+returns null metadata with a valid roster and preserves shared backoff. Existing
+keys, encrypted credentials, database schema and connection controls are unchanged.
+
+57 offline regression tests passed on Windows/Python 3.14.2. These include existing
+core authorization/cache/encryption/validation and mocked OAuth tests plus the new
+transport, service and API-handler checks. Coverage includes selected-field
+validation, populated/empty rosters, count independence from status population,
+separate/cached timestamps, malformed and oversized bodies, redirects, partial
+failures, the total timeout, identity mismatch, concurrent full/partial reads,
+revocation and connection changes during status collection, and increasing bounded
+backoff with Retry-After. The HTTP handler and response headers were exercised
+without opening a listener. All game responses were synthetic; the supplied
+discovery capture was used only as schema evidence and was not copied into source.
+
+Python syntax compilation, pip check, diff whitespace and documentation/example
+checks passed. Local regression files remain ignored by Git and excluded from the
+Docker build context. No application startup, live RCON traffic, Discord bot edit,
+commit, push or deployment was performed. Existing tests that start an application
+or a local HTTP fixture were deliberately not run for this task.
+
+Pending live acceptance: confirm fields against an authorized populated and empty
+game server; verify actual three-request latency within the shared 10-second budget;
+check approximately 30-second polling, status failures, cached observations and
+upstream rate limits through HTTPS/Tunnel. After publication and deployment are
+authorized, use the existing Git pull, backup and Docker rebuild/check/recreate
+procedure in DEPLOYMENT.md. No data migration, replacement API keys or .env changes
+are required. The Discord adapter handoff and sanitized response are in API.md.
+
+The entries below record earlier work and are not claims that those checks were
+repeated for this extension.
+
 Checked locally on 2026-10-11. This is a restricted test-deployment candidate,
 not production acceptance or an independent security audit.
 

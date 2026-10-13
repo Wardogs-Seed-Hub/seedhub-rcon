@@ -1,9 +1,11 @@
 """Fixed read-only routes, with public destination validation and pinned IPs."""
 import asyncio
+from dataclasses import dataclass
 import ipaddress
 import json
 import re
 import socket
+import time
 import uuid
 
 import aiohttp
@@ -12,6 +14,15 @@ from yarl import URL
 from .errors import Problem
 
 MAX_BYTES = 256 * 1024
+
+
+@dataclass
+class Snapshot:
+    players: list
+    observed_at: float
+    server: dict | None = None
+    status_observed_at: float | None = None
+    metadata_retry: int | None = None
 
 
 def server_uuid(value):
@@ -83,6 +94,26 @@ def players(payload):
     return result
 
 
+def server_info(payload):
+    """Select only the documented display fields; never forward raw status."""
+    def text(value):
+        return (isinstance(value, str) and 1 <= len(value) <= 256
+                and bool(value.strip()) and not any(ord(c) < 32 or ord(c) == 127 for c in value))
+
+    if not isinstance(payload, dict):
+        raise Problem(502, "invalid_rcon_response", "The server returned invalid status details.")
+    population = payload.get("players")
+    experiences = payload.get("experiences")
+    if (not text(payload.get("serverName")) or not text(payload.get("map"))
+            or not isinstance(population, dict) or type(population.get("max")) is not int
+            or not 1 <= population["max"] <= 512
+            or not isinstance(experiences, list) or len(experiences) > 32
+            or not all(text(value) for value in experiences)):
+        raise Problem(502, "invalid_rcon_response", "The server returned invalid status details.")
+    return {"name": payload["serverName"], "map": payload["map"],
+            "experiences": list(experiences), "max_players": population["max"]}
+
+
 class Rcon:
     def __init__(self, settings):
         self.settings = settings
@@ -101,7 +132,7 @@ class Rcon:
         return public_ip(str(direct))
 
     async def _get(self, session, ip, host, port, password, path):
-        if path not in ("/v1/server-id", "/v1/players"):
+        if path not in ("/v1/server-id", "/v1/players", "/v1/status"):
             raise ValueError("Unsupported RCON operation")
         url = URL.build(scheme="http", host=ip, port=port, path=path)
         host_header = f"[{host}]:{port}" if ":" in host else f"{host}:{port}"
@@ -130,18 +161,23 @@ class Rcon:
 
     async def read(self, host, port, password, expected_uuid):
         _, data = await self._read(host, port, password, expected_uuid)
+        return data.players
+
+    async def collect(self, host, port, password, expected_uuid):
+        _, data = await self._read(host, port, password, expected_uuid, metadata=True)
         return data
 
     async def discover(self, host, port, password):
         identity, _ = await self._read(host, port, password, None)
         return identity
 
-    async def _read(self, host, port, password, expected_uuid):
+    async def _read(self, host, port, password, expected_uuid, metadata=False):
         host = host_name(host)
         if type(port) is not int or not 1 <= port <= 65535:
             raise Problem(400, "invalid_destination", "Enter a valid RCON port from 1 to 65535.")
         if not password or len(password) > 512 or any(ord(c) < 32 or ord(c) > 126 for c in password):
             raise Problem(400, "invalid_request", "Enter a valid RCON password.")
+        snapshot = None
         try:
             async with asyncio.timeout(self.settings.timeout):
                 async with self.slots:
@@ -162,8 +198,23 @@ class Rcon:
                             raise Problem(502, "invalid_rcon_response", "Server identity could not be verified.") from None
                         if expected_uuid is not None and actual != expected_uuid:
                             raise Problem(409, "server_mismatch", "The server does not match that UUID / join code.")
-                        return actual, players(await self._get(session, ip, host, port, password, "/v1/players"))
+                        roster = players(await self._get(session, ip, host, port, password, "/v1/players"))
+                        snapshot = Snapshot(roster, time.time())
+                        if metadata:
+                            try:
+                                info = server_info(await self._get(session, ip, host, port, password, "/v1/status"))
+                                snapshot.status_observed_at = time.time()
+                                snapshot.server = info
+                            except Problem as exc:
+                                snapshot.metadata_retry = exc.retry or 30
+                        return actual, snapshot
         except TimeoutError:
+            if snapshot is not None:
+                snapshot.metadata_retry = 60
+                return actual, snapshot
             raise Problem(504, "rcon_timeout", "The game server took too long to respond.", 60) from None
         except (aiohttp.ClientError, OSError):
+            if snapshot is not None:
+                snapshot.metadata_retry = 60
+                return actual, snapshot
             raise Problem(503, "rcon_unavailable", "The game server could not be checked.", 60) from None

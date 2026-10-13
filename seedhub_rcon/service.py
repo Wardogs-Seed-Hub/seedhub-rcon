@@ -172,7 +172,7 @@ class Service:
             with self.db.conn:
                 self.db.conn.execute("UPDATE connections SET next_read=? WHERE id=?", (now + 30, cid))
             try:
-                data = await self.transport.read(row["host"], row["port"], self.db.password(row), sid)
+                data = await self.transport.collect(row["host"], row["port"], self.db.password(row), sid)
             except Problem as exc:
                 current = self.db.one("SELECT * FROM connections WHERE id=?", cid)
                 if current and current["revision"] == row["revision"]:
@@ -188,12 +188,23 @@ class Service:
             current = authorize()
             if current["revision"] != row["revision"]:
                 raise Problem(503, "service_unavailable", "The connection changed during the check.", 30)
-            observed = time.time()
+            observed = data.observed_at
+            info = (dict(data.server, observed_at=stamp(data.status_observed_at))
+                    if data.server is not None else None)
             result = {"server_uuid": sid, "observed_at": stamp(observed), "served_at": stamp(),
-                      "cached": False, "count": len(data), "players": data}
+                      "cached": False, "count": len(data.players), "players": data.players,
+                      "server": info}
+            failures = 0
+            next_read = observed + 30
+            if data.metadata_retry is not None:
+                # A valid roster survives optional status failure, but all game requests
+                # still respect the shared, persistent backoff and upstream Retry-After.
+                failures = row["failures"] + 1
+                delay = max(data.metadata_retry, min(300, 30 * 2 ** min(failures, 4)))
+                next_read = time.time() + delay
             with self.db.conn:
-                self.db.conn.execute("""UPDATE connections SET failures=0,next_read=?,
-                    checked_at=?,check_status='Connected' WHERE id=?""", (observed + 30, observed, cid))
+                self.db.conn.execute("""UPDATE connections SET failures=?,next_read=?,
+                    checked_at=?,check_status='Connected' WHERE id=?""", (failures, next_read, observed, cid))
             self.cache[cid] = (row["revision"], observed, result)
             self.cache.move_to_end(cid)
             while len(self.cache) > 256:
