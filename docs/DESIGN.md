@@ -136,6 +136,9 @@ For each read:
 5. Validate players and record their observation time, then fetch selected status
    fields with the remaining timeout. Preserve Steam IDs as strings. Status has
    its own observation time; failure returns null metadata and retains valid players.
+   Readable mode and mod labels come from exact recognized active experience IDs.
+   Keep the raw experiences for compatibility and unknown IDs; no additional
+   catalog read is required. API.md defines unknown and unmodified results.
 6. Recheck key validity, enabled state, and connection revision after the network
    wait before delivering the result.
 

@@ -15,6 +15,11 @@ from .errors import Problem
 
 MAX_BYTES = 256 * 1024
 
+# Exact IDs observed in the game's experience catalog. The catalog describes
+# available choices; only /v1/status supplies the active experiences for a read.
+BASE_EXPERIENCES = frozenset({"Madrid_KOTH_01", "Bakurani_KOTH_01", "Detroit_KOTH_01"})
+MOD_EXPERIENCES = {"KOTH_InfantryOnly": "Infantry Only", "KOTH_Hardcore": "Hardcore"}
+
 
 @dataclass
 class Snapshot:
@@ -94,6 +99,18 @@ def players(payload):
     return result
 
 
+def experience_labels(experiences):
+    """Label known active IDs without treating unknown values as no modifiers."""
+    bases = BASE_EXPERIENCES.intersection(experiences)
+    mode = "King of the Hill" if len(bases) == 1 else None
+    understood = all(value in BASE_EXPERIENCES or value in MOD_EXPERIENCES
+                     for value in experiences)
+    mods = (list(dict.fromkeys(MOD_EXPERIENCES[value] for value in experiences
+                              if value in MOD_EXPERIENCES))
+            if mode is not None and understood else None)
+    return mode, mods
+
+
 def server_info(payload):
     """Select only the documented display fields; never forward raw status."""
     def text(value):
@@ -110,8 +127,10 @@ def server_info(payload):
             or not isinstance(experiences, list) or len(experiences) > 32
             or not all(text(value) for value in experiences)):
         raise Problem(502, "invalid_rcon_response", "The server returned invalid status details.")
+    mode, mods = experience_labels(experiences)
     return {"name": payload["serverName"], "map": payload["map"],
-            "experiences": list(experiences), "max_players": population["max"]}
+            "experiences": list(experiences), "mode": mode, "mods": mods,
+            "max_players": population["max"]}
 
 
 class Rcon:

@@ -12,6 +12,7 @@ SeedHUB RCON lets WARDOGS community-server owners connect their servers and prov
 - Retrieve player lists on demand, with a 30-second cache. No background scanning.
 - Read verified join UUID, server name, current map, experience/game-mode identifiers
   and capacity directly from game RCON; no external server-list website is required.
+- Get readable mode and mod labels alongside the original active experience IDs.
 - View and copy the bot API response, including player names and Steam IDs, from each connection.
 
 ## Setup
@@ -52,7 +53,9 @@ read-only key still accesses only its assigned server. Sanitized example:
   "server": {
     "name": "Example Community Server",
     "map": "Ozeti",
-    "experiences": ["Madrid_KOTH_01"],
+    "experiences": ["Madrid_KOTH_01", "KOTH_InfantryOnly"],
+    "mode": "King of the Hill",
+    "mods": ["Infantry Only"],
     "max_players": 100,
     "observed_at": "2026-10-13T15:00:01Z"
   }
@@ -81,8 +84,14 @@ No background polling, sponsor/image fetch, database migration or new key is nee
 The SeedHub adapter should use `server_uuid` for registration identity, `count` for
 population/seed-success decisions, and `players[].steam_id`, `players[].name` plus
 top-level `observed_at` for attendance. Read display details from `server.name`,
-`server.map`, `server.experiences` and `server.max_players` when `server` is non-null.
-Experience strings are game-provided identifiers, not translated mode names.
+`server.map`, `server.mode`, `server.mods` and `server.max_players` when `server` is
+non-null. `server.experiences` preserves the original game-provided identifiers.
+Mode and mod labels are derived from recognized active experience IDs, with no
+extra game requests. `mode: null` means the mode could not be identified uniquely.
+`mods: []` means the recognized experiences report no modifiers; `mods: null`
+means the list cannot be interpreted completely and should display as unavailable.
+Unknown IDs remain in `experiences` for the bot to inspect. See the API reference
+for the exact mappings and fallback rules.
 Treat unavailable metadata as unknown and deduplicate attendance snapshots by UUID
 and player observation time. Do not count `served_at` or metadata time as new attendance.
 

@@ -1,8 +1,10 @@
 # Player list API contract
 
-This is the version 0.1.0 test-release contract with an additive server-information
-extension tested locally on 2026-10-13. The extension has not been deployed or live
-accepted. Existing route, authorization, keys and player fields remain compatible.
+This is the version 0.1.0 test-release contract with additive server information
+and readable mode/mod labels. The server-information extension is running on the
+owner's VPS; the mode/mod additions have only been tested locally. Existing route,
+authorization, keys and player fields remain compatible. Live acceptance of the
+new labels remains pending.
 
 ## Route and identity
 
@@ -111,7 +113,9 @@ GET /healthz returns a minimal local service/database status and does not check 
   "server": {
     "name": "Example Community Server",
     "map": "Ozeti",
-    "experiences": ["Madrid_KOTH_01"],
+    "experiences": ["Madrid_KOTH_01", "KOTH_InfantryOnly"],
+    "mode": "King of the Hill",
+    "mods": ["Infantry Only"],
     "max_players": 100,
     "observed_at": "2026-10-13T15:00:01Z"
   }
@@ -141,6 +145,8 @@ The new server field is either the complete object above or null. Its source map
 | server.name | /v1/status: serverName | Nonblank string, at most 256 characters; not the owner's local connection label |
 | server.map | /v1/status: map | Nonblank string, at most 256 characters; returned unchanged |
 | server.experiences | /v1/status: experiences | Array of 0–32 nonblank strings, each at most 256 characters; raw game-mode/experience identifiers |
+| server.mode | Derived from active experiences | Readable mode string, or null when no unique recognized base experience is present |
+| server.mods | Derived from active experiences | Array of readable modifier labels; [] for recognized unmodified mode, null when interpretation is incomplete |
 | server.max_players | /v1/status: players.max | Integer 1–512; booleans, strings and fractional values rejected |
 | server.observed_at | Service clock | Successful status validation time, independent of player observation |
 | players[].steam_id | /v1/players: players[].steamId | Unique 17-digit string; never converted to a number |
@@ -150,8 +156,41 @@ The new server field is either the complete object above or null. Its source map
 Server strings reject ASCII control characters. Missing or invalid selected status
 fields invalidate the entire server object. Unknown upstream fields are ignored;
 configuration, passwords, addresses, scores and unrestricted responses are not exposed.
-No separate friendly game_mode is inferred from experiences. No sponsor/image URL is
-included and neither /v1/sponsor nor image bytes are fetched.
+No sponsor/image URL is included and neither /v1/sponsor nor image bytes are fetched.
+
+### Mode and mods
+
+The service translates these exact, case-sensitive experience IDs. The mappings
+are based on the supplied game catalog evidence; a live catalog request is not
+needed for each read. Only IDs in the active /v1/status experiences array count.
+
+| Active experience ID | Classification | Display label |
+| --- | --- | --- |
+| Madrid_KOTH_01 | Base mode | King of the Hill |
+| Bakurani_KOTH_01 | Base mode | King of the Hill |
+| Detroit_KOTH_01 | Base mode | King of the Hill |
+| KOTH_InfantryOnly | Modifier | Infantry Only |
+| KOTH_Hardcore | Modifier | Hardcore |
+
+- mode is "King of the Hill" when exactly one distinct recognized base ID is
+  present. Without one, or with multiple distinct base IDs, mode is null.
+- mods is an array only when there is one recognized base and every experience
+  ID is recognized. Labels retain upstream order, with duplicate labels removed.
+  A recognized base alone produces []; do not display that as unavailable.
+- If any experience ID is unknown, mods is null rather than an incomplete list
+  or a misleading []. A recognized base may still supply mode in that case.
+- Empty experiences or modifiers without a recognized base produce null for both
+  mode and mods. Unknown/ambiguous IDs do not invalidate otherwise valid status
+  or players and do not trigger failure backoff. Raw experiences are always kept
+  unchanged, including order and duplicates, for future parser support.
+- map remains the exact /v1/status map value. These labels do not rename maps.
+- The new fields share server.observed_at; deriving labels is not a new observation.
+  Cached replies retain the same labels, raw IDs and observation times. No new
+  endpoints, background jobs or upstream requests are introduced.
+
+The bot should render mode: null and mods: null as unavailable, mods: [] as None,
+and a nonempty mods array as a comma-separated list. When server itself is null,
+all its display details are unavailable. Attendance still uses the player fields.
 
 Hosting region is intentionally not part of this API. The examined RCON responses
 do not expose it. Region collection and Pragma backend access are out of scope;
@@ -257,9 +296,10 @@ SeedHub adapter handoff (bot changes are separate):
 - Deduplicate attendance using server_uuid plus top-level observed_at. Check its
   age even when cached is false; never use served_at or server.observed_at as
   attendance evidence. cached: true is reused evidence, not a new observation.
-- When server is non-null, read name, map, experiences and max_players for server
-  display, using server.observed_at to judge their age. Treat null as unknown,
-  not blank name/map or zero capacity. Any bot-retained display fallback must keep
+- When server is non-null, read name, map, mode, mods and max_players for server
+  display, using server.observed_at to judge their age. Preserve experiences when
+  inspecting unknown IDs. Treat null as unknown, not blank name/map, zero capacity
+  or an unmodified game. Any bot-retained display fallback must keep
   its old observation time and be labeled stale. Do not infer absence from null.
 - Poll on demand during active seeding at approximately 30 seconds; honor errors
   and Retry-After. Failed reads mean unavailable, never zero players. Stop processing

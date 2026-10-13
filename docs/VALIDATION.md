@@ -1,5 +1,29 @@
 # Version 0.1.0 validation
 
+## Readable mode and mods — 2026-10-13
+
+Added server.mode and server.mods to the authenticated API and matching owner
+player-list preview. Labels are derived only from recognized IDs in the active
+status experiences. Map and raw experiences remain unchanged. Unknown, empty or
+ambiguous experience lists preserve the valid roster and metadata while returning
+null for labels that cannot be determined; an understood unmodified game returns
+mods: []. No additional game routes, polling, backend access or region fields were
+introduced. Existing keys and stored data need no changes.
+
+66 offline tests passed on Windows/Python 3.14.2, including the existing security,
+attendance, cache and timeout regressions plus base-mode mappings, individual and
+combined modifiers, duplicate/unknown/empty/ambiguous IDs, unchanged raw data,
+matching owner/API JSON, label changes between observations and no extra upstream
+requests. Syntax compilation, documentation links, matching JSON examples and
+diff whitespace checks passed. Tests remain local-only and ignored. Neither
+application was started; there were no live RCON requests or Discord bot edits.
+
+These changes have been tested locally and await deployment and owner verification
+against the real active experiences. After deployment, use View player list to
+copy the JSON; Test connection remains an identity/player connectivity check.
+The bot parser remains separate work. API.md contains the exact fields and
+null-versus-empty rules for that handoff.
+
 ## Region scope decision — 2026-10-13
 
 Region collection and Pragma backend access were removed from the proposed scope
