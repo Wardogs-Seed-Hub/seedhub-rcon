@@ -1,5 +1,15 @@
 # Version 0.1.0 validation
 
+## Region scope decision — 2026-10-13
+
+Region collection and Pragma backend access were removed from the proposed scope
+at the owner's request. Inspection found no implemented region field, lookup or
+game-backend authentication in the RCON application or local helper scripts, so
+no runtime code or stored data needed removal. API.md and DESIGN.md now explicitly
+exclude this work. Documentation links and diff whitespace were checked; runtime
+tests were not repeated for this documentation-only change. No application was
+started, and no bot code or live service was changed.
+
 ## RCON server-information extension — 2026-10-13
 
 Added selected server name, map, experience identifiers and capacity to the existing

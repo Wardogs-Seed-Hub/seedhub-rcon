@@ -11,6 +11,11 @@ Jinja2, Authlib with httpx2, and cryptography AES-256-GCM. The application is
 prepared for restricted test deployment, not accepted for production.
 See DEPLOYMENT.md for configuration and VALIDATION.md for actual checks.
 
+Hosting region is outside this integration's scope. Do not add region collection,
+Pragma backend access, server-browser authentication, IP geolocation or an
+owner-entered region as part of this project. The service uses the fixed RCON
+read routes documented in API.md; it does not query server-list websites.
+
 ## Independent Discord sign-in
 
 Users open the RCON website directly and sign in with Discord OAuth2.

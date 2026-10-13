@@ -153,6 +153,12 @@ configuration, passwords, addresses, scores and unrestricted responses are not e
 No separate friendly game_mode is inferred from experiences. No sponsor/image URL is
 included and neither /v1/sponsor nor image bytes are fetched.
 
+Hosting region is intentionally not part of this API. The examined RCON responses
+do not expose it. Region collection and Pragma backend access are out of scope;
+there is no region lookup, estimate or owner-entered fallback. The SeedHub adapter
+must not require a region field from this response or infer one from the server
+name, map or experience identifiers.
+
 If status times out, fails, is unsupported, or is malformed after a valid player
 collection, return HTTP 200 with the existing player fields and server: null.
 There is no status observation timestamp in that case. Never carry metadata from a
