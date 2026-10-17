@@ -77,8 +77,10 @@ roster has `count: 0` and `players: []`.
 The bot may request approximately every 30 seconds during active seeding. Reads are
 on demand, concurrent callers share collection, and snapshots are reused for less
 than 30 seconds after player observation. This does not guarantee a new snapshot
-on every poll. All three game reads share a 10-second timeout. Failures (including
-optional status failures) trigger shared backoff; honor `Retry-After` on errors.
+on every poll. All game reads share a 10-second timeout. Optional status failures
+pause status reads for five minutes while identity/player reads continue normally.
+Explicit upstream rate limits or `Retry-After` still delay all game reads; required
+identity/player failures retain increasing backoff. Honor `Retry-After` on errors.
 No background polling, sponsor/image fetch, database migration or new key is needed.
 
 The SeedHub adapter should use `server_uuid` for registration identity, `count` for

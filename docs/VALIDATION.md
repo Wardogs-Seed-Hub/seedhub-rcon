@@ -247,3 +247,29 @@ names, text Steam IDs, empty lists, no credentials in the response, unauthorized
 and disabled access, logout/deletion/edit during reads, shared concurrent reads,
 and failure backoff. Python compilation and diff checks passed. Real-server data,
 visual layout and browser clipboard behavior await owner testing on the VPS.
+
+## Optional status isolation - 2026-10-17
+
+Ordinary optional status failures now pause only status reads for five minutes,
+using the existing persistent throttle table. Fresh identity/player reads continue
+at the existing cadence. Explicit upstream 429/Retry-After retains shared backoff;
+integer and HTTP-date waits are honored even beyond five minutes. The API shape,
+metadata mapping, fixed read routes, authorization, cache lifetime and separate
+observation timestamps remain unchanged. No database migration is required.
+
+104 isolated tests passed on Windows/Python 3.14.2. Coverage includes null/full
+metadata, empty rosters, unavailable/malformed/timed-out status, persistent status
+cooldowns and upstream waits, cached timestamps, wrong UUIDs, failed registration,
+key revocation and permission changes during reads. The local CLI fixture also
+cleans up its Windows child process before deleting disposable data. Test files
+remain local-only.
+
+The companion bot update consumes validated metadata and shows the saved RCON
+provider in approvals. Both applications require deployment for the complete fix.
+No live RCON, Discord, VPS, production database or credential changes were made.
+The deployed image/version and actual /v1/status support, schema and timing remain
+operator checks. After deployment, compare the owner's private player-list preview
+with the Discord display without sharing API keys or player rosters. Confirm fresh
+roster timestamps continue during ordinary optional-status failures, while real
+rate limits still stop fresh observations. See DEPLOYMENT.md for the existing
+Compose update and backup procedure.

@@ -171,8 +171,12 @@ class Service:
                               max(1, int(row["next_read"] - now) + 1))
             with self.db.conn:
                 self.db.conn.execute("UPDATE connections SET next_read=? WHERE id=?", (now + 30, cid))
+            status_key = digest(f"status:{cid}:{row['revision']}")
+            cooldown = self.db.one("SELECT expires FROM rate_limits WHERE id=?", status_key)
+            metadata = not cooldown or cooldown["expires"] <= now
             try:
-                data = await self.transport.collect(row["host"], row["port"], self.db.password(row), sid)
+                data = await self.transport.collect(row["host"], row["port"], self.db.password(row), sid,
+                                                    metadata=metadata)
             except Problem as exc:
                 current = self.db.one("SELECT * FROM connections WHERE id=?", cid)
                 if current and current["revision"] == row["revision"]:
@@ -196,13 +200,17 @@ class Service:
                       "server": info}
             failures = 0
             next_read = observed + 30
-            if data.metadata_retry is not None:
-                # A valid roster survives optional status failure, but all game requests
-                # still respect the shared, persistent backoff and upstream Retry-After.
+            if data.upstream_retry is not None:
+                # Explicit upstream waits apply to every route, even after valid players.
                 failures = row["failures"] + 1
-                delay = max(data.metadata_retry, min(300, 30 * 2 ** min(failures, 4)))
+                delay = max(data.upstream_retry, min(300, 30 * 2 ** min(failures, 4)))
                 next_read = time.time() + delay
             with self.db.conn:
+                if data.metadata_retry is not None:
+                    # Optional failures cool down status only. Reuse the persistent
+                    # expiring throttle table; roster checks keep their normal cadence.
+                    self.db.conn.execute("INSERT OR REPLACE INTO rate_limits VALUES (?,?,?)",
+                        (status_key, 1, time.time() + max(300, data.metadata_retry)))
                 self.db.conn.execute("""UPDATE connections SET failures=?,next_read=?,
                     checked_at=?,check_status='Connected' WHERE id=?""", (failures, next_read, observed, cid))
             self.cache[cid] = (row["revision"], observed, result)

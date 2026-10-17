@@ -1,10 +1,11 @@
 # Player list API contract
 
 This is the version 0.1.0 test-release contract with additive server information
-and readable mode/mod labels. The server-information extension is running on the
-owner's VPS; the mode/mod additions have only been tested locally. Existing route,
-authorization, keys and player fields remain compatible. Live acceptance of the
-new labels remains pending.
+and readable mode/mod labels. Metadata parsing and independent optional-status
+cooldowns are verified with offline tests. The currently deployed source/image
+and real game-server status response must be checked by the operator; these
+results do not establish live acceptance. Existing route, authorization, keys
+and player fields remain compatible.
 
 ## Route and identity
 
@@ -203,7 +204,9 @@ collection, return HTTP 200 with the existing player fields and server: null.
 There is no status observation timestamp in that case. Never carry metadata from a
 previous snapshot into the new one or give it a new timestamp. A cache hit reuses
 the whole original snapshot (including null if status failed), without more requests.
-Failure backoff still applies; partial success does not bypass upstream Retry-After.
+Optional status failure pauses only status requests for five minutes; required
+identity/player reads retain their normal cadence. Explicit upstream rate limits
+and Retry-After still pause all routes, even after partial success.
 No raw upstream error details are exposed. A failed identity/player read remains
 an error, even if an older valid snapshot or metadata exists.
 
@@ -242,7 +245,7 @@ Use a small, stable, sanitized error body:
 
 Do not return raw upstream bodies, addresses, passwords, headers, or stack traces.
 A rejected RCON password is not the same as an invalid API key.
-Return a bounded Retry-After value on rate limits and temporary failures where
+Return Retry-After on rate limits and temporary failures where
 appropriate. A more specific credential fault may appear only in the authenticated
 owner setup/status flow, never in a cross-owner discovery response.
 
@@ -259,7 +262,8 @@ owner setup/status flow, never in a cross-owner discovery response.
   after individual authorization.
 - Upstream timeout: 10 seconds total for slot wait, DNS, identity, players and status.
   Fresh API/owner-preview collection makes at most three sequential fixed GETs:
-  /v1/server-id, /v1/players, /v1/status. Status uses only the remaining time;
+  /v1/server-id, /v1/players, /v1/status. Status is skipped during its cooldown
+  and uses only the remaining time when attempted;
   timeout after valid players yields server: null. Registration/edit/test checks
   still require only identity and players. No immediate upstream retries occur.
   Waiting for another caller's per-connection lock is outside that transport budget.
@@ -273,21 +277,26 @@ owner setup/status flow, never in a cross-owner discovery response.
   produce a temporary 429 after a restart until the saved delay expires.
 - On transient failures, increase delay up to five minutes and honor applicable
   Retry-After responses. Do not immediately retry invalid credentials.
-- Optional status failures also increment the shared persistent failure counter:
-  delay 60, 120, 240, then 300 seconds after collection, or the larger bounded
-  upstream Retry-After. Full success resets the counter. Integer Retry-After is
-  bounded to 30–300 seconds; missing/unparseable values on upstream 429 use 60.
-  During this delay a still-valid roster cache may be served with server: null;
-  after its 30-second lifetime, return 429 with Retry-After until collection is due.
-  This deliberately reduces attendance availability during status trouble instead
-  of repeatedly contacting a server that asked the service to wait.
+- Optional status failures (unsupported/malformed responses, rejected status
+  requests, connection errors and timeouts) pause status reads for five minutes.
+  This cooldown uses the existing persistent throttle table, scoped to the
+  connection revision. During it, fresh identity/player reads continue normally
+  with server: null; no old metadata or invented status timestamp is returned.
+  Ordinary status failures do not increment the roster failure counter.
+- Upstream HTTP 429, or any unsuccessful response with Retry-After, still applies
+  shared persistent backoff: 60, 120, 240, then 300 seconds, or the longer explicit
+  wait. Retry-After accepts integer seconds and HTTP dates, with a 30-second floor
+  and no truncation of longer valid waits. Missing/invalid values use 60 seconds.
+  A valid roster already collected may be cached only for its normal lifetime;
+  afterward the service returns 429 until the shared delay expires. Genuine rate
+  limits can interrupt attendance; neither cached replies nor gaps prove presence.
 - Validate API keys on every read, including cached reads and retries.
 - Setups/tests have separate strict limits and require the connection owner's session.
 - A retry delay schedules no autonomous read; another authorized call is required.
 
 ## Bot interpretation
 
-SeedHub adapter handoff (bot changes are separate):
+SeedHub adapter interpretation:
 
 - Keep the same authenticated route and existing per-server key. Verify returned
   server_uuid equals the paired join UUID; fresh collections verify it via RCON.

@@ -177,7 +177,8 @@ Owner sessions last four hours. Mutating operations require sign-in within the
 last 15 minutes and both a same-origin request and a valid form token.
 Login attempts are bound to the browser and expire after five minutes.
 
-One fresh API/preview read requests /v1/server-id, /v1/players and /v1/status in order.
+One fresh API/preview read requests /v1/server-id, /v1/players and, unless status
+is cooling down after a failure, /v1/status in order.
 Registration/edit/test checks use only the first two routes. Public IPs are
 validated and pinned for the read. All destination ports from 1 to 65535 are allowed.
 The total operation timeout is 10 seconds, concurrency is eight, and responses
@@ -188,8 +189,12 @@ are retained in memory. Rate-limit and next-read state persists in SQLite.
 Requests are limited globally and per caller, and setup/testing has separate
 owner, destination, and connection throttles. Failures delay later calls up to
 five minutes; no autonomous retry is scheduled.
-Optional status failure also preserves shared backoff and Retry-After, without
-extending the valid roster's cache lifetime or reusing older status as fresh.
+Optional status failure puts only status reads on a five-minute cooldown in the
+existing persistent rate-limit table. Identity/player reads continue at their
+normal cadence, returning null metadata during that cooldown. Explicit upstream
+429 or Retry-After responses still delay all reads for at least the requested
+wait, even when it exceeds five minutes. No schema migration is needed. Neither
+kind of delay extends roster cache lifetime or reuses older status as fresh.
 See API.md for the exact selected fields, validation and adapter handoff.
 
 Local automated checks and simulated browser inspection are recorded in

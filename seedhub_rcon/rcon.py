@@ -1,8 +1,10 @@
 """Fixed read-only routes, with public destination validation and pinned IPs."""
 import asyncio
 from dataclasses import dataclass
+from email.utils import parsedate_to_datetime
 import ipaddress
 import json
+import math
 import re
 import socket
 import time
@@ -28,6 +30,7 @@ class Snapshot:
     server: dict | None = None
     status_observed_at: float | None = None
     metadata_retry: int | None = None
+    upstream_retry: int | None = None
 
 
 def server_uuid(value):
@@ -158,12 +161,16 @@ class Rcon:
         async with session.get(url, headers={"Host": host_header,
                 "Authorization": "Bearer " + password, "Accept": "application/json",
                 "Accept-Encoding": "identity"}, allow_redirects=False) as response:
-            if response.status == 429:
+            if response.status != 200 and (response.status == 429 or "Retry-After" in response.headers):
+                raw = response.headers.get("Retry-After", "60")
                 try:
-                    delay = max(30, min(300, int(response.headers.get("Retry-After", "60"))))
-                except ValueError:
+                    delay = (int(raw) if re.fullmatch(r"[0-9]{1,10}", raw)
+                             else math.ceil(parsedate_to_datetime(raw).timestamp() - time.time()))
+                    delay = max(30, delay)
+                except (ValueError, TypeError, OverflowError):
                     delay = 60
-                raise Problem(503, "rcon_unavailable", "The server asked us to wait.", delay)
+                raise Problem(503, "rcon_unavailable", "The server asked us to wait.", delay,
+                              upstream_retry=True)
             if response.status != 200:
                 raise Problem(503, "rcon_unavailable", "The game server could not be checked.", 60)
             if response.headers.get("Content-Encoding", "identity").lower() != "identity":
@@ -182,8 +189,8 @@ class Rcon:
         _, data = await self._read(host, port, password, expected_uuid)
         return data.players
 
-    async def collect(self, host, port, password, expected_uuid):
-        _, data = await self._read(host, port, password, expected_uuid, metadata=True)
+    async def collect(self, host, port, password, expected_uuid, *, metadata=True):
+        _, data = await self._read(host, port, password, expected_uuid, metadata=metadata)
         return data
 
     async def discover(self, host, port, password):
@@ -226,6 +233,8 @@ class Rcon:
                                 snapshot.server = info
                             except Problem as exc:
                                 snapshot.metadata_retry = exc.retry or 30
+                                if exc.upstream_retry:
+                                    snapshot.upstream_retry = exc.retry
                         return actual, snapshot
         except TimeoutError:
             if snapshot is not None:

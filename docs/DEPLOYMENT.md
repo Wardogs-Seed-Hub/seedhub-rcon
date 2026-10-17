@@ -173,6 +173,8 @@ These checks remain pending until performed on the actual test deployment:
    reads contact none. Confirm server name, map, experiences and capacity match
    the game. Verify separate player/status timestamps, server: null on optional
    status failure, and Retry-After behavior while polling around every 30 seconds.
+   An ordinary status failure should skip status for five minutes but continue
+   fresh roster observations. A genuine upstream rate limit must still delay reads.
 7. Revoke/replace a key, disable and delete a disposable registration. Confirm old
    access fails, including after restart.
 8. Leave the app idle and confirm it makes no unsolicited game-server requests.
