@@ -118,6 +118,7 @@ GET /healthz returns a minimal local service/database status and does not check 
     "mode": "King of the Hill",
     "mods": ["Infantry Only"],
     "max_players": 100,
+    "banner_url": "https://images.example.com/banner.png",
     "observed_at": "2026-10-13T15:00:01Z"
   }
 }
@@ -130,7 +131,7 @@ Names and server strings are untrusted display text: escape them when rendering 
 mentions if later displayed there.
 
 Top-level observed_at is when this service finished collecting and validating
-/v1/players, before any status fetch. It is not a game-supplied attendance timestamp.
+/v1/players, before any status or sponsor fetch. It is not a game-supplied attendance timestamp.
 server.observed_at is when /v1/status was successfully collected and validated.
 served_at is when this response was created, including on cache hits. All times
 are UTC ISO 8601 strings ending in Z, optionally including fractional seconds.
@@ -149,6 +150,7 @@ The new server field is either the complete object above or null. Its source map
 | server.mode | Derived from active experiences | Readable mode string, or null when no unique recognized base experience is present |
 | server.mods | Derived from active experiences | Array of readable modifier labels; [] for recognized unmodified mode, null when interpretation is incomplete |
 | server.max_players | /v1/status: players.max | Integer 1–512; booleans, strings and fractional values rejected |
+| server.banner_url | /v1/sponsor: imageUrl | Validated public HTTPS media URL or null; optional display data cached separately for ten minutes |
 | server.observed_at | Service clock | Successful status validation time, independent of player observation |
 | players[].steam_id | /v1/players: players[].steamId | Unique 17-digit string; never converted to a number |
 | players[].name | /v1/players: players[].name | String, at most 256 characters |
@@ -157,7 +159,54 @@ The new server field is either the complete object above or null. Its source map
 Server strings reject ASCII control characters. Missing or invalid selected status
 fields invalidate the entire server object. Unknown upstream fields are ignored;
 configuration, passwords, addresses, scores and unrestricted responses are not exposed.
-No sponsor/image URL is included and neither /v1/sponsor nor image bytes are fetched.
+The optional banner field is validated independently; an unusable URL does not
+invalidate status or players. Only the selected URL is retained, never the raw
+sponsor response. Image bytes are never fetched.
+
+### Automatic server banner
+
+The fixed authenticated `GET /v1/sponsor` returns `imageUrl`, as documented in
+[the observed WARDOGS RCON protocol](https://github.com/warcon-app/warcon/blob/main/docs/wardogs-api.md).
+That reference reports builds returning a truncated `https:` value; this is
+rejected. Unsupported endpoints, malformed/empty replies, ordinary HTTP errors
+and timeouts produce `banner_url: null`, preserving valid status and players.
+No configuration is changed and no write endpoint or external server list is used.
+
+A banner read is attempted after successful identity, players and status reads,
+using the same authenticated transport, pinned public destination, response size
+limit and remaining ten-second timeout. The banner URL itself is never used as a
+request destination. Public HTTPS URLs up to 2,048 characters are accepted without
+fetching their content. Local/private/special IPs, internal hostnames, malformed
+URLs, embedded credentials, authentication query parameters and URLs containing
+the RCON password are rejected. Extensionless image URLs are supported. DNS and
+image availability are not verified; rendering depends on Discord and the host.
+
+A separate in-memory cache holds at most 256 banner results, including null/error
+results, for 600 seconds after the attempt. The next authorized fresh collection
+with valid status after expiry refreshes it; normal 30-second roster polls reuse
+it. Changes, removals and newly available banners appear through that refresh.
+There is no worker, idle polling, schema migration, new setting or new API key.
+Status failure/cooldown skips sponsor reads and keeps the entire `server` object
+null, even when a banner is cached. Banner cache time never replaces either
+player or status observation time. Cached 30-second responses retain their
+original fields and times.
+
+The cache is bound to internal connection ID, revision, owner and server UUID.
+Connection edits, key rotation/revocation, disabling and removal invalidate it;
+identity mismatch discards it, and results are reauthorized after network waits.
+Restart or bounded-cache eviction discards banner entries; the next permitted
+read may fetch again. Explicit sponsor HTTP 429/Retry-After uses the existing
+persistent shared backoff, including waits longer than ten minutes. A previously
+collected roster remains reusable only for its normal lifetime; no successful
+observation is invented during a wait. Ordinary sponsor failures do not trigger
+status cooldown or roster failure backoff.
+
+The owner-only JSON preview and authenticated API expose the same optional field.
+Older API responses without it remain supported by the bot. SeedHub validates the
+URL again and feeds its existing active-card MediaGallery and identity/revision
+cache. Missing/invalid/stale metadata hides the banner without changing buttons,
+attendance, population or rewards. Live WARDOGS/Discord acceptance is not implied
+by offline regression checks.
 
 ### Mode and mods
 
@@ -201,8 +250,9 @@ name, map or experience identifiers.
 
 If status times out, fails, is unsupported, or is malformed after a valid player
 collection, return HTTP 200 with the existing player fields and server: null.
-There is no status observation timestamp in that case. Never carry metadata from a
-previous snapshot into the new one or give it a new timestamp. A cache hit reuses
+There is no status observation timestamp in that case. Never carry status metadata from a
+previous snapshot into the new one or give it a new timestamp; the banner URL
+uses its separate ten-minute cache described above. A cache hit reuses
 the whole original snapshot (including null if status failed), without more requests.
 Optional status failure pauses only status requests for five minutes; required
 identity/player reads retain their normal cadence. Explicit upstream rate limits
@@ -260,15 +310,16 @@ owner setup/status flow, never in a cross-owner discovery response.
   can reuse a snapshot and delay the next observation until another request arrives.
 - One in-progress lookup per connection; simultaneous callers share it only
   after individual authorization.
-- Upstream timeout: 10 seconds total for slot wait, DNS, identity, players and status.
-  Fresh API/owner-preview collection makes at most three sequential fixed GETs:
-  /v1/server-id, /v1/players, /v1/status. Status is skipped during its cooldown
+- Upstream timeout: 10 seconds total for slot wait, DNS, identity, players, status and any due sponsor read.
+  Fresh API/owner-preview collection makes at most four sequential fixed GETs:
+  /v1/server-id, /v1/players, /v1/status and /v1/sponsor when due with valid status. Status is skipped during its cooldown
   and uses only the remaining time when attempted;
-  timeout after valid players yields server: null. Registration/edit/test checks
+  status timeout after valid players yields server: null; sponsor timeout retains
+  valid status with banner_url: null. Registration/edit/test checks
   still require only identity and players. No immediate upstream retries occur.
   Waiting for another caller's per-connection lock is outside that transport budget.
 - Eight concurrent RCON operations; 256 KiB per response, 512 players,
-  256 characters per name, and 256 cached connection snapshots.
+  256 characters per name, 256 cached connection snapshots and 256 banner entries.
 - 1,200 requests/minute globally; 120/minute per caller IP; 60 API reads/minute
   per connection. The latter can reuse cached results without new RCON traffic.
 - Setup: six attempts/minute per owner and three/minute per destination.
@@ -305,7 +356,8 @@ SeedHub adapter interpretation:
 - Deduplicate attendance using server_uuid plus top-level observed_at. Check its
   age even when cached is false; never use served_at or server.observed_at as
   attendance evidence. cached: true is reused evidence, not a new observation.
-- When server is non-null, read name, map, mode, mods and max_players for server
+- When server is non-null, read name, map, mode, mods, max_players and optional
+  banner_url for server
   display, using server.observed_at to judge their age. Preserve experiences when
   inspecting unknown IDs. Treat null as unknown, not blank name/map, zero capacity
   or an unmodified game. Any bot-retained display fallback must keep

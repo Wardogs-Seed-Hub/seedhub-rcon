@@ -9,6 +9,7 @@ import re
 import socket
 import time
 import uuid
+from urllib.parse import parse_qsl, unquote, urlsplit
 
 import aiohttp
 from yarl import URL
@@ -31,6 +32,8 @@ class Snapshot:
     status_observed_at: float | None = None
     metadata_retry: int | None = None
     upstream_retry: int | None = None
+    banner_url: str | None = None
+    sponsor_checked: bool = False
 
 
 def server_uuid(value):
@@ -136,6 +139,39 @@ def server_info(payload):
             "max_players": population["max"]}
 
 
+def banner_url(payload, password):
+    """Select only a public HTTPS image URL; never resolve or fetch that URL."""
+    value = payload.get("imageUrl") if isinstance(payload, dict) else None
+    if (not isinstance(value, str) or not 1 <= len(value) <= 2048
+            or any(ord(c) < 33 or ord(c) > 126 for c in value)
+            or any(c in value for c in '\\<>"`{}|^')
+            or re.search(r'%(?![0-9a-fA-F]{2})', value)):
+        return None
+    try:
+        url = urlsplit(value)
+        if (url.scheme != "https" or not url.hostname or url.username is not None
+                or url.password is not None or url.fragment or url.path in ("", "/")
+                or (url.port is not None and not 1 <= url.port <= 65535) or '%' in url.netloc):
+            return None
+        host = host_name(url.hostname)
+        try:
+            ipaddress.ip_address(host)
+        except ValueError:
+            if (host.split('.')[-1].isdigit()
+                    or host.endswith(('.localhost', '.local', '.internal', '.lan', '.home', '.onion', '.test', '.invalid'))):
+                return None
+        else:
+            public_ip(host)
+        decoded = unquote(value)
+        if (password in decoded or any(ord(c) < 32 or ord(c) == 127 for c in decoded)
+                or any(re.search(r'key|token|secret|password|credential|signature|authorization', key, re.I)
+                       for key, _ in parse_qsl(url.query))):
+            return None
+    except (Problem, ValueError, TypeError, UnicodeError):
+        return None
+    return value
+
+
 class Rcon:
     def __init__(self, settings):
         self.settings = settings
@@ -154,7 +190,7 @@ class Rcon:
         return public_ip(str(direct))
 
     async def _get(self, session, ip, host, port, password, path):
-        if path not in ("/v1/server-id", "/v1/players", "/v1/status"):
+        if path not in ("/v1/server-id", "/v1/players", "/v1/status", "/v1/sponsor"):
             raise ValueError("Unsupported RCON operation")
         url = URL.build(scheme="http", host=ip, port=port, path=path)
         host_header = f"[{host}]:{port}" if ":" in host else f"{host}:{port}"
@@ -189,15 +225,15 @@ class Rcon:
         _, data = await self._read(host, port, password, expected_uuid)
         return data.players
 
-    async def collect(self, host, port, password, expected_uuid, *, metadata=True):
-        _, data = await self._read(host, port, password, expected_uuid, metadata=metadata)
+    async def collect(self, host, port, password, expected_uuid, *, metadata=True, sponsor=False):
+        _, data = await self._read(host, port, password, expected_uuid, metadata=metadata, sponsor=sponsor)
         return data
 
     async def discover(self, host, port, password):
         identity, _ = await self._read(host, port, password, None)
         return identity
 
-    async def _read(self, host, port, password, expected_uuid, metadata=False):
+    async def _read(self, host, port, password, expected_uuid, metadata=False, sponsor=False):
         host = host_name(host)
         if type(port) is not int or not 1 <= port <= 65535:
             raise Problem(400, "invalid_destination", "Enter a valid RCON port from 1 to 65535.")
@@ -235,14 +271,26 @@ class Rcon:
                                 snapshot.metadata_retry = exc.retry or 30
                                 if exc.upstream_retry:
                                     snapshot.upstream_retry = exc.retry
+                        if sponsor and snapshot.server is not None and snapshot.upstream_retry is None:
+                            snapshot.sponsor_checked = True
+                            try:
+                                payload = await self._get(session, ip, host, port, password, "/v1/sponsor")
+                                snapshot.banner_url = banner_url(payload, password)
+                            except Problem as exc:
+                                if exc.upstream_retry:
+                                    snapshot.upstream_retry = exc.retry
+                            except (TimeoutError, aiohttp.ClientError, OSError):
+                                pass  # Optional image failures never invalidate status or players.
                         return actual, snapshot
         except TimeoutError:
             if snapshot is not None:
-                snapshot.metadata_retry = 60
+                if not snapshot.sponsor_checked:
+                    snapshot.metadata_retry = 60
                 return actual, snapshot
             raise Problem(504, "rcon_timeout", "The game server took too long to respond.", 60) from None
         except (aiohttp.ClientError, OSError):
             if snapshot is not None:
-                snapshot.metadata_retry = 60
+                if not snapshot.sponsor_checked:
+                    snapshot.metadata_retry = 60
                 return actual, snapshot
             raise Problem(503, "rcon_unavailable", "The game server could not be checked.", 60) from None

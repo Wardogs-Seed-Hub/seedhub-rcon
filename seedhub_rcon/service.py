@@ -19,6 +19,7 @@ class Service:
     def __init__(self, db, transport):
         self.db, self.transport = db, transport
         self.cache = OrderedDict()
+        self.banners = OrderedDict()  # Connection-bound values, including absent/failed banners.
         self.locks = weakref.WeakValueDictionary()
 
     def lock(self, cid):
@@ -26,6 +27,7 @@ class Service:
 
     def invalidate(self, cid):
         self.cache.pop(cid, None)
+        self.banners.pop(cid, None)
 
     def authorize(self, raw, sid):
         if not isinstance(raw, str) or len(raw) < 40 or len(raw) > 128:
@@ -174,9 +176,14 @@ class Service:
             status_key = digest(f"status:{cid}:{row['revision']}")
             cooldown = self.db.one("SELECT expires FROM rate_limits WHERE id=?", status_key)
             metadata = not cooldown or cooldown["expires"] <= now
+            identity = (row["revision"], row["owner"], sid)
+            banner = self.banners.get(cid)
+            if banner and (banner[0] != identity or not now < banner[1]):
+                self.banners.pop(cid, None)
+                banner = None
             try:
                 data = await self.transport.collect(row["host"], row["port"], self.db.password(row), sid,
-                                                    metadata=metadata)
+                                                    metadata=metadata, sponsor=metadata and banner is None)
             except Problem as exc:
                 current = self.db.one("SELECT * FROM connections WHERE id=?", cid)
                 if current and current["revision"] == row["revision"]:
@@ -187,14 +194,24 @@ class Service:
                             (time.time() + delay, time.time(), cid))
                 authorize()
                 if exc.code == "server_mismatch":
+                    self.invalidate(cid)
                     raise Problem(503, "rcon_unavailable", "The game server identity changed.", 60) from None
                 raise
             current = authorize()
-            if current["revision"] != row["revision"]:
+            if (current["revision"], current["owner"], current["server_uuid"]) != identity:
+                self.invalidate(cid)
                 raise Problem(503, "service_unavailable", "The connection changed during the check.", 30)
+            if data.sponsor_checked:
+                banner = (identity, time.time() + 600, data.banner_url)
+                self.banners[cid] = banner
+                self.banners.move_to_end(cid)
+                while len(self.banners) > 256:
+                    self.banners.popitem(last=False)
             observed = data.observed_at
             info = (dict(data.server, observed_at=stamp(data.status_observed_at))
                     if data.server is not None else None)
+            if info is not None:
+                info["banner_url"] = banner[2] if banner and time.time() < banner[1] else None
             result = {"server_uuid": sid, "observed_at": stamp(observed), "served_at": stamp(),
                       "cached": False, "count": len(data.players), "players": data.players,
                       "server": info}

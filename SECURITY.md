@@ -143,8 +143,13 @@ Do not offer arbitrary command execution, kicks, bans, writes, or configuration 
 ## Data minimization and recovery
 
 Return only player Steam IDs and names, a count, the verified server UUID, selected
-server name/map/experience/capacity fields, and their separate observation timestamps.
-Never forward raw status/configuration or fetch sponsor images.
+server name/map/experience/capacity fields, an optional validated public HTTPS
+banner URL, and separate player/status observation timestamps.
+Never forward raw status/configuration/sponsor responses or fetch sponsor image
+bytes. The only additional RCON route is fixed GET /v1/sponsor; its imageUrl is
+validated display data and never an HTTP request destination. Banner cache entries
+are bounded and tied to the connection ID, revision, owner and UUID; connection
+changes invalidate them. See docs/API.md for URL validation and refresh rules.
 Do not collect player addresses or unrelated gameplay statistics.
 Keep player snapshots in bounded memory by default, not permanent history.
 Audit connection creation/removal, owner changes, authorization failures, and

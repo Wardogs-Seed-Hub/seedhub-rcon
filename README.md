@@ -13,6 +13,8 @@ SeedHUB RCON lets WARDOGS community-server owners connect their servers and prov
 - Read verified join UUID, server name, current map, experience/game-mode identifiers
   and capacity directly from game RCON; no external server-list website is required.
 - Get readable mode and mod labels alongside the original active experience IDs.
+- Supply the server's optional sponsor/banner URL for active SeedHUB seeding cards,
+  with on-demand ten-minute caching and no manual banner setup.
 - View and copy the bot API response, including player names and Steam IDs, from each connection.
 
 ## Setup
@@ -57,6 +59,7 @@ read-only key still accesses only its assigned server. Sanitized example:
     "mode": "King of the Hill",
     "mods": ["Infantry Only"],
     "max_players": 100,
+    "banner_url": "https://images.example.com/banner.png",
     "observed_at": "2026-10-13T15:00:01Z"
   }
 }
@@ -70,7 +73,7 @@ responses retain both observation times. These timestamps are UTC, not game even
 The examples are illustrative and contain no live attendance evidence.
 
 If status fails or is malformed, `server` is `null`; the valid roster still succeeds.
-Old metadata is never carried into a new roster. Identity mismatch or failed player
+Old status metadata is never carried into a new roster. Identity mismatch or failed player
 collection fails the request; neither becomes a fresh empty list. A validated empty
 roster has `count: 0` and `players: []`.
 
@@ -81,12 +84,17 @@ on every poll. All game reads share a 10-second timeout. Optional status failure
 pause status reads for five minutes while identity/player reads continue normally.
 Explicit upstream rate limits or `Retry-After` still delay all game reads; required
 identity/player failures retain increasing backoff. Honor `Retry-After` on errors.
-No background polling, sponsor/image fetch, database migration or new key is needed.
+Optional `/v1/sponsor` reads share that timeout and refresh a bounded,
+connection/revision-bound banner cache every ten minutes on demand. Missing or
+invalid banners return `banner_url: null`; ordinary sponsor failures preserve
+status and players. No image bytes, background polling, migration or new key is
+needed. See the API reference for validation, invalidation and rate-limit behavior.
 
 The SeedHub adapter should use `server_uuid` for registration identity, `count` for
 population/seed-success decisions, and `players[].steam_id`, `players[].name` plus
 top-level `observed_at` for attendance. Read display details from `server.name`,
-`server.map`, `server.mode`, `server.mods` and `server.max_players` when `server` is
+`server.map`, `server.mode`, `server.mods`, `server.max_players` and optional
+`server.banner_url` when `server` is
 non-null. `server.experiences` preserves the original game-provided identifiers.
 Mode and mod labels are derived from recognized active experience IDs, with no
 extra game requests. `mode: null` means the mode could not be identified uniquely.

@@ -178,7 +178,13 @@ last 15 minutes and both a same-origin request and a valid form token.
 Login attempts are bound to the browser and expire after five minutes.
 
 One fresh API/preview read requests /v1/server-id, /v1/players and, unless status
-is cooling down after a failure, /v1/status in order.
+is cooling down after a failure, /v1/status in order. After valid status, a due
+/v1/sponsor read supplies only the validated public image URL, sharing the same
+transport and timeout. A bounded 256-entry in-memory banner cache, tied to the
+connection ID/revision/owner/UUID, refreshes on demand after ten minutes, including
+absent/failed values. Existing invalidation clears it; no worker or schema change
+is needed. Ordinary sponsor failures preserve status and players, while explicit
+upstream rate limits still use shared backoff. API.md defines the field and limits.
 Registration/edit/test checks use only the first two routes. Public IPs are
 validated and pinned for the read. All destination ports from 1 to 65535 are allowed.
 The total operation timeout is 10 seconds, concurrency is eight, and responses
