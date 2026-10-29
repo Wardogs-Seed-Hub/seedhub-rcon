@@ -1,5 +1,7 @@
 # SeedHUB RCON
 
+**New owner?** Start with [START_HERE.md](START_HERE.md) (plain English). Technical orientation: [docs/HANDOFF_TECHNICAL.md](docs/HANDOFF_TECHNICAL.md).
+
 SeedHUB RCON lets WARDOGS community-server owners connect their servers and provide trusted services with on-demand player lists through a private API key.
 
 ## Features
