@@ -43,7 +43,7 @@ Edit .env privately:
   not 0. They let the container access files owned by you without running as root.
 - RCON_KEY_DIR: the full host path to ~/.config/seedhub-rcon, for example
   /home/youruser/.config/seedhub-rcon. Do not use a literal ~.
-- SEEDHUB_RCON_PUBLIC_URL: https://rcon-test.wardogseedhub.com or your test domain.
+- SEEDHUB_RCON_PUBLIC_URL: https://rcon-test.seedhub.gg or your test domain.
 - SEEDHUB_RCON_KEY_FILE: leave /run/seedhub-rcon/encryption.key for initial setup.
   This is the path inside the container, not the path on the VPS.
 - SEEDHUB_RCON_DISCORD_CLIENT_ID and SEEDHUB_RCON_DISCORD_CLIENT_SECRET:
@@ -67,7 +67,7 @@ Validate quietly with docker compose config --quiet.
 Register this exact callback in the Discord Developer Portal for the test app:
 
 ```text
-https://rcon-test.wardogseedhub.com/auth/discord/callback
+https://rcon-test.seedhub.gg/auth/discord/callback
 ```
 
 Use your chosen domain if different. Login requests identify only; this OAuth
@@ -143,13 +143,13 @@ Optional Cloudflare Access requires additional machine authentication for API
 clients as well as their per-server read keys.
 
 ```sh
-curl --fail https://rcon-test.wardogseedhub.com/healthz
+curl --fail https://rcon-test.seedhub.gg/healthz
 ```
 
 For a local check before Tunnel routing, use the configured domain in the header:
 
 ```sh
-curl --fail -H 'Host: rcon-test.wardogseedhub.com' http://127.0.0.1:8080/healthz
+curl --fail -H 'Host: rcon-test.seedhub.gg' http://127.0.0.1:8080/healthz
 ```
 
 ## Test acceptance

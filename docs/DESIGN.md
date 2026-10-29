@@ -3,7 +3,7 @@
 ## Scope and deployment
 
 The Discord bot runs on Bisect. SeedHub RCON runs on a VPS behind Cloudflare
-Tunnel at https://rcon.wardogseedhub.com. Self-hosters use their own domain and
+Tunnel at https://rcon.seedhub.gg. Self-hosters use their own domain and
 are recommended to use the same Tunnel setup. Nothing runs alongside game servers.
 
 Version 0.1.0 implements the player-list reader using Python, aiohttp, SQLite,

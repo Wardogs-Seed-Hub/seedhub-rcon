@@ -15,7 +15,7 @@ Authorization: Bearer <server-read-api-key>
 Accept: application/json
 ```
 
-Hosted base URL: https://rcon.wardogseedhub.com
+Hosted base URL: https://rcon.seedhub.gg
 
 The server UUID is the verified WARDOGS server identity, bound to one registered
 connection and Discord owner within the instance. It is not authentication.
